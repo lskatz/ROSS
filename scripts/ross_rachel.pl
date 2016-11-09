@@ -17,7 +17,6 @@ no strict "refs";
 use FindBin;
 use lib "$FindBin::RealBin/../lib";
 $ENV{PATH} = "$FindBin::RealBin:".$ENV{PATH};
-use AKUtils qw(logmsg);
 
 use Getopt::Long;
 use File::Temp ('tempdir');

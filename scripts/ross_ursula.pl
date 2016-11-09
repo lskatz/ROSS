@@ -12,7 +12,6 @@ use strict;
 use FindBin;
 use lib "$FindBin::RealBin/../lib";
 $ENV{PATH} = "$FindBin::RealBin:".$ENV{PATH};
-use AKUtils;
 
 use Getopt::Long;
 use File::Temp ('tempdir');

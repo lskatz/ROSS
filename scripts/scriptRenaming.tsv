@@ -1,0 +1,8 @@
+	ross_phoebe.pl	randomizes reads
+run_assembly_convertMultiFastqToStandard.pl	ross_carol.pl	Ross's ex wife lesbian
+run_assembly_isFastqPE.pl	ross_ung.pl	ugly naked guy because why not
+run_assembly_readMetrics.pl	ross_rachel.pl	She is a personal shopper who knows metrics
+run_assembly_removeDuplicateReads.pl	ross_ursula.pl	phoebe's twin sister
+run_assembly_shuffleReads.pl	joey?
+run_assembly_trimClean.pl	ross_monica	because she likes to clean
+	ross_chandler.pl	Trims low abundance kmers from reads, or removes reads mostly made of low-abundance kmers
