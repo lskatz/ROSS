@@ -3,17 +3,17 @@
 
 ##Converting scripts from CGP and other sources to ROSS
 
-###Initial import complete
+|Initially imported|Formally called|Description|
+|--------------------|-------|-------|
+|`ross_monica.pl`  | `run_assembly_trimClean.pl`                  | Trims and cleans a fastq file|
+|`ross_carol.pl`   | `run_assembly_convertMultiFastqToStandard.pl`| Convert any fastq file to a standard four-line-per-entry format|
+|`ross_rachel.pl`  | `run_assembly_readMetrics.pl`                | Prints basic read metrics|
+|`ross_ung.pl`     | `run_assembly_isFastqPE.pl`                  | Determines paired-endedness|
 
-* ross_monica.pl
-* ross_carol.pl
-* ross_rachel.pl
-* ross_ung.pl
-
-###TODO
-
-* ross_validateFastq.pl -- still need to rename this script
-* ross_phoebe.pl
-* ross_chandler.pl
-* ross_ursula.pl
-* ross_joey.pl
+|Not imported yet  | Formally called|Description|
+|------------------|----------------|-----------|
+|`validateFastq.pl`| `ross_validateFastq.pl`                      | Makes sure a fastq file is in a standard format and is unbroken |
+|`ross_phoebe.pl`  | N/A                                          | Randomizes reads|
+|`ross_chandler.pl`| N/A                                          | Re-assesses read quality based on kmer abundance|
+|`ross_ursula.pl`  | `run_assembly_removeDuplicateReads.pl`       | Removes duplicate reads and/or downsamples reads|
+|`ross_joey.pl`    | `run_assembly_shuffleReads.pl`               | Shuffles or deshuffles paired end reads|
