@@ -1,7 +1,7 @@
-=Random Operations on Sequences Suite - ROSS
+#Random Operations on Sequences Suite - ROSS
 
 
-==Converting scripts from CGP and other sources to ROSS
+##Converting scripts from CGP and other sources to ROSS
 
 * ross_monica.pl
 * ross_carol.pl
