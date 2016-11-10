@@ -18,17 +18,42 @@ use threads;
 use threads::shared;
 use Thread::Queue;
 
-use Exporter;
+use Exporter qw/import/;
 our @EXPORT_OK = qw(
              logmsg mktempdir median stdev fullPathToExec isFasta readMfa alnum
+             @fastqExt @fastaExt @bamExt @vcfExt @richseqExt @sffExt @samExt
            );
+
+our @fastqExt=qw(.fastq.gz .fastq .fq .fq.gz);
+our @fastaExt=qw(.fasta .fna .faa .mfa .fas .fa);
+our @bamExt=qw(.sorted.bam .bam);
+our @vcfExt=qw(.vcf.gz .vcf);
+our @richseqExt=qw(.gbk .gbf .gb .embl);
+our @sffExt=qw(.sff);
+our @samExt=qw(.sam .bam);
 
 
 # TODO if 'die' is imported by a script, redefine
 # sig die in that script as this function.
-local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
+$SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
 
-sub logmsg {my $FH = $AKUtils::LOG || *STDOUT; print $FH "$0: ".(caller(1))[3].": @_\n";}
+# Centralized logmsg
+#sub logmsg {print STDERR "$0: ".(caller(1))[3].": @_\n";}
+sub logmsg {
+  local $0=basename $0;
+  my $parentSub=(caller(1))[3] || (caller(0))[3];
+  $parentSub=~s/^main:://;
+
+  # Find the thread ID and stringify it
+  my $tid=threads->tid;
+  $tid=($tid) ? "(TID$tid)" : "";
+
+  my $msg="$0: $parentSub$tid: @_\n";
+
+  print STDERR $msg;
+}
+
+
 
 sub mktempdir(;$) {
 	my ($settings) = @_;
@@ -129,25 +154,6 @@ sub readMfa($;$) {
 	$seqs{$cur_seq_hdr} = $seq if $cur_seq_hdr;
 	die("Error: No sequences found in $mfa_file") unless %seqs;
 	return \%seqs;
-}
-
-# Function to help sort alphanumerically
-# Usage: @sorted=sort alum @unsorted;
-	foreach my $seqname (sort alnum keys %$seqs) {
-sub alnum {
-	my ($i);
-	my ($len1, $len2) = (length($a), length($b));
-	for ($i = 0; ($i < $len1) && ($i < $len2); ++$i) {
-		my $c1 = substr($a, $i, 1);
-		my $c2 = substr($b, $i, 1);
-		($c1 =~ /^\d/o) || ($c2 =~ /^\d/o) || ($c1 ne $c2) and last;
-	}
-	my $a_r = ($i < $len1) ? substr($a, $i) : "";
-	my $b_r = ($i < $len2) ? substr($b, $i) : "";
-	my ($a_n, $a_s) = ($a_r =~ /^(\d+)(.*)$/o);
-	my ($b_n, $b_s) = ($b_r =~ /^(\d+)(.*)$/o);
-	return (defined($a_n) && defined($b_n)) ?
-	(($a_n <=> $b_n) || ($a_s cmp $b_s)) : ($a cmp $b);
 }
 
 sub printSeqsToFile($$;$) {

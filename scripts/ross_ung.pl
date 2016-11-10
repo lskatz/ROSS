@@ -1,5 +1,7 @@
 #!/usr/bin/env perl
-# Sees if a fastq file is Paired End or not
+# Sees if a raw reads file is Paired End or not
+#
+# TODO include sam files.  SFF files too if we see a point to it.
 
 use strict;
 use warnings;

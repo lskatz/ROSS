@@ -1,58 +1,50 @@
 #!/usr/bin/env perl
 
-# run_assembly_readMetrics.pl: puts out metrics for a raw reads file
+# ross_rachel.pl: puts out metrics for a raw reads file
 # Author: Lee Katz <lkatz@cdc.gov>
-
-package PipelineRunner;
-my ($VERSION) = ('$Id: $' =~ /,v\s+(\d+\S+)/o);
+#
+# TODO make a read score that makes sense.  The score will describe
+# how good these reads might be in terms of read-mapping, assembly, 
+# or other downstream processes
 
 my $settings = {
-    appname => 'cgpipeline',
     # these are the subroutines for all read metrics
     metrics=>[qw(avgReadLength totalBases maxReadLength minReadLength avgQuality numReads)],
 };
 
 use strict;
 no strict "refs";
-use FindBin;
-use lib "$FindBin::RealBin/../lib";
-$ENV{PATH} = "$FindBin::RealBin:".$ENV{PATH};
 
 use Getopt::Long;
-use File::Temp ('tempdir');
-use File::Path;
-use File::Spec;
-use File::Copy;
-use File::Basename;
+use File::Basename qw/basename fileparse dirname/;
 use List::Util qw(min max sum shuffle);
-use CGPipelineUtils;
 use Data::Dumper;
 use Statistics::Descriptive;
+
+# Custom modules
+use FindBin qw/$RealBin/;
+use lib "$RealBin/../lib/perl5";
+use ROSS qw/mktempdir logmsg @fastaExt @fastqExt @sffExt @samExt/;
 
 use threads;
 use Thread::Queue;
 
-my @fastaExt=qw(.fasta .fa .mfa .fas .fna);
-my @fastqExt=qw(.fastq .fq .fastq.gz .fq.gz);
-my @sffExt=qw(.sff);
-my @samExt=qw(.sam .bam);
 $0 = fileparse($0);
 local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
-sub logmsg {my $FH = $FSFind::LOG || *STDERR; print $FH "$0: ".(caller(1))[3].": @_\n";}
 
 exit(main());
 
 sub main() {
-  $settings = AKUtils::loadConfig($settings);
   die(usage($settings)) if @ARGV<1;
 
+  # TODO sampleFrequency option
   my @cmd_options=qw(help fast qual_offset=i minLength=i numcpus=i expectedGenomeSize=s histogram|hist reads-per-qual tempdir=s);
   GetOptions($settings, @cmd_options) or die $!;
   die usage() if($$settings{help});
   die "ERROR: need reads file\n".usage() if(@ARGV<1);
   $$settings{qual_offset}||=33;
   $$settings{numcpus}||=1;
-  $$settings{tempdir}||=AKUtils::mktempdir();
+  $$settings{tempdir}||=mktempdir();
   $$settings{bufferSize}||=100000;
   $$settings{minLength}||=1;
   # the sample frequency is 100% by default or 1% if "fast"
@@ -126,13 +118,13 @@ sub printReadMetricsFromFile{
   # derive some more values
   my $avgQual=round($count{qualSum}/$count{numBases});
   my $avgReadLength=round($count{numBases}/$count{extrapolatedNumReads});
-  my $isPE=(AKUtils::is_fastqPE($file))?"yes":"no";
+  my $isPE=`run_assembly_isFastqPE.pl $file`;
   my $medianFragLen='.';
   if(grep(/$ext/,@samExt)){
     # Bam files are PE if they have at least some fragment sizes.
     # See if tlen is present so that it can be calculated.
-    $isPE=(@{$count{tlen}} > 10)?"yes":"no"; 
-    if($isPE eq 'yes'){
+    $isPE=(@{$count{tlen}} > 0)?1:0;
+    if($isPE){
       my $tlenStats=Statistics::Descriptive::Full->new;
       $tlenStats->add_data(@{$count{tlen}});
       my $tlen25=$tlenStats->percentile(25);
@@ -381,7 +373,6 @@ sub readSam{
 }
 
 # Truncate to the hundreds place.
-# Yes I understand it's not technically rounding.
 sub round{
   my ($num)=(@_);
   my $rounded=int($num*100)/100;
