@@ -30,13 +30,14 @@ exit main();
 
 sub main{
   my $settings={};
-  GetOptions($settings,qw(help kmerlength|kmer=i gt=i kmerCounter=s delta=i tempdir=s numcpus=i)) or die $!;
+  GetOptions($settings,qw(help sortby=s kmerlength|kmer=i gt=i kmerCounter=s delta=i tempdir=s numcpus=i)) or die $!;
   $$settings{kmerlength} ||=21;
   $$settings{kmerCounter}||="";
   $$settings{delta}      ||=100;
   $$settings{gt}         ||=1;
   $$settings{tempdir}    ||=mktempdir();
   $$settings{numcpus}    ||=1;
+  $$settings{sortby}     ||="";
 
   my($fastq)=@ARGV;
   die usage() if(!$fastq || $$settings{help});
@@ -47,8 +48,18 @@ sub main{
   my $kmercount=countKmers($fastq,$$settings{kmerlength},$settings);
 
   # Print the output
-  while(my($kmer,$count)=each(%$kmercount)){
-    print $kmer."\t".$count."\n";
+  if($$settings{sortby} =~ /kmer/i){
+    for my $kmer(sort {$a cmp $b} keys(%$kmercount)){
+      print $kmer."\t".$$kmercount{$kmer}."\n";
+    }
+  } elsif($$settings{sortby} =~ /count/i){
+    for my $kmer(sort {$$kmercount{$a} <=> $$kmercount{$b}} keys(%$kmercount)){
+      print $kmer."\t".$$kmercount{$kmer}."\n";
+    }
+  } else {
+    while(my($kmer,$count)=each(%$kmercount)){
+      print $kmer."\t".$count."\n";
+    }
   }
 
   return 0;
@@ -148,8 +159,8 @@ sub countKmersPurePerl{
   my %kmer=();
   for(@thr){
     my $threadKmer=$_->join;
-    while(my($kmer,$count)=each(%$threadKmer)){
-      $kmer{$kmer}+=$count;
+    for my $kmer(keys(%$threadKmer)){
+      $kmer{$kmer}+=$$threadKmer{$kmer};
     }
   }
 
@@ -262,12 +273,13 @@ sub usage{
   --delta    100    How different the counts have to be to
                     detect a valley or peak
   --numcpus  1
-  --gt       1      Print kmers greater than this count.
 
   MISC
   --kmerCounter ''  The kmer counting program to use.
                     Default: (empty string) auto-choose
                     Options: perl, jellyfish
+  --gt       1      Print kmers greater than this count.
+  --sortby   ''     Default: unsorted. Options: kmer, count
   "
 }
 
