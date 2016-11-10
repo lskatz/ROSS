@@ -56,9 +56,6 @@ sub convert{
 
     read($infp,$qual,$seqLength) or die "Problem reading $seqLength characters from $in because $!";
     die "For sequence $id, I got a qual that is a different length than intended\n$qual" if(length($qual)!=$seqLength);
-    #for(1..$seqLength){
-    #  $qual.=getc(IN);
-    #}
     $qual=~s/\s+//g;
     $sequence=~s/\s+//g;
 
