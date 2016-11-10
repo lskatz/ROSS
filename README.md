@@ -14,6 +14,6 @@
 |------------------|----------------|-----------|
 |`validateFastq.pl`| `ross_validateFastq.pl`                      | Makes sure a fastq file is in a standard format and is unbroken |
 |`ross_phoebe.pl`  | N/A                                          | Randomizes reads|
-|`ross_chandler.pl`| N/A                                          | Re-assesses read quality based on kmer abundance|
+|`ross_chandler.pl`| N/A                                          | Pure perl kmer counting. No outside dependencies.|
 |`ross_ursula.pl`  | `run_assembly_removeDuplicateReads.pl`       | Removes duplicate reads and/or downsamples reads|
 |`ross_joey.pl`    | `run_assembly_shuffleReads.pl`               | Shuffles or deshuffles paired end reads|
