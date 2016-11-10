@@ -14,6 +14,7 @@ use warnings;
 use File::Basename qw/basename fileparse dirname/;
 use File::Temp ('tempdir');
 use Data::Dumper;
+use IO::Uncompress::Gunzip;
 
 use threads;
 use threads::shared;
@@ -184,19 +185,27 @@ sub openFastq{
 
   my $fh;
 
-  lock($fhStick);
-
   my($name,$dir,$ext)=fileparse($fastq,@fastqExt);
 
   if(!grep(/$ext/,@fastqExt)){
     die "ERROR: could not read $fastq as a fastq file";
   }
 
-  if($ext =~/\.gz$/i){
-    open($fh,"zcat $fastq | ") or die "ERROR: could not open $fastq for reading!: $!";
+  # Open the file in different ways, depending on if it
+  # is gzipped or if the user has gzip installed.
+  lock($fhStick);
+  if($ext =~/\.gz$/){
+    # use binary gzip if we can... why not take advantage
+    # of the compiled binary's speedup?
+    if(-e "/usr/bin/gzip"){
+      open($fh,"gzip -cd $fastq | ") or die "ERROR: could not open $fastq for reading!: $!";
+    }else{
+      $fh=new IO::Uncompress::Gunzip($fastq) or die "ERROR: could not read $fastq: $!";
+    }
   } else {
     open($fh,"<",$fastq) or die "ERROR: could not open $fastq for reading!: $!";
   }
+
   return $fh;
 }
 
