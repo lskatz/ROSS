@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 
-# run_assembly_trimClean: trim and clean a set of raw reads
+# ross_monica.pl:  trim and clean a set of raw reads
 # Author: Lee Katz <lkatz@cdc.gov>
-
-package PipelineRunner;
-my ($VERSION) = ('$Id: $' =~ /,v\s+(\d+\S+)/o);
+#
+# TODO change low-quality bases to N, based on a cutoff
+# TODO change trimming vs avgqual arguments to something more meaningful.  I don't like the way they're named right now.
 
 my $settings = {
     appname => 'cgpipeline',
@@ -12,33 +12,27 @@ my $settings = {
 my $stats;
 
 use strict;
-use FindBin;
-use lib "$FindBin::RealBin/../lib";
-$ENV{PATH} = "$FindBin::RealBin:".$ENV{PATH};
+use warnings;
 
 use Getopt::Long;
-use File::Temp ('tempdir');
-use File::Path;
-use File::Spec;
-use File::Copy;
-use File::Basename;
+use File::Basename qw/fileparse basename dirname/;
 use List::Util qw(min max sum shuffle);
 use POSIX;
-#use Math::Round qw/nearest/;
 
 use Data::Dumper;
 use threads;
 use Thread::Queue;
 use threads::shared;
 
+use FindBin qw/$RealBin/;
+use lib "$RealBin/../lib/perl5";
+use ROSS qw/mktempdir logmsg openFastq @fastqExt/;
+
 $0 = fileparse($0);
-local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
-sub logmsg {print STDOUT "$0: ".(caller(1))[3].": @_\n";}
 
 my %threadStatus:shared;
-my @IOextensions=qw(.fastq .fastq.gz .fq);
 
-exit(main());
+exit(&main());
 
 sub main() {
   my $settings={
@@ -46,25 +40,26 @@ sub main() {
     qualOffset=>33,
     # trimming
     min_quality=>30,
-    bases_to_trim=>20, # max number of bases that will be trimmed on either side
+    bases_to_trim=>100, # max number of bases that will be trimmed on either side
     # cleaning
     min_avg_quality=>10,
     min_length=>62,# twice kmer length sounds good
-    singletons=>1, # yes, output singletons
+    singletons=>0, # yes, output singletons
     'trim-on-average'=>0, # trimming until a base > min_quality is found
     trim=>1,              # yes perform trimming
     removeDots=>1,        # yes remove dots
   };
   
-  GetOptions($settings,qw(poly=i infile=s@ outfile=s min_quality=i bases_to_trim=i min_avg_quality=i  min_length=i quieter trim! removeDots! debug qualOffset=i numcpus=i singletons! trim-on-average! auto)) or die "Error in command line arguments";
-  $$settings{numcpus}||=getNumCPUs();
+  GetOptions($settings,qw(poly=i infile=s@ outfile=s min_quality=i bases_to_trim=i min_avg_quality=i  min_length=i quieter trim! removeDots! debug qualOffset=i numcpus=i singletons! trim-on-average! auto help)) or die $!;
+  $$settings{numcpus}||=1;
   $$settings{'zero-quality'}=chr($$settings{qualOffset}); # zero quality
   
+  die usage($settings) if($$settings{help});
   my $infile=$$settings{infile} or die "Error: need an infile\n".usage($settings);
   my $outfile=$$settings{outfile} or die "Error: need an outfile\n".usage($settings);
 
   my $outfileDir;
-  ($$settings{outBasename},$outfileDir,$$settings{outSuffix}) = fileparse($outfile,@IOextensions);
+  ($$settings{outBasename},$outfileDir,$$settings{outSuffix}) = fileparse($outfile,@fastqExt);
   my $singletonOutfile="$outfileDir/$$settings{outBasename}.singletons$$settings{outSuffix}";
 
   if($$settings{trim}){
@@ -137,19 +132,11 @@ sub qualityTrimFastqPoly($;$){
     # load all reads into the threads for analysis
     my $linesPerGroup=4*$poly;
     my $moreLinesPerGroup=$linesPerGroup-1; # calculate that outside the loop to save CPU
-    if($$settings{inSuffix}=~/\.fastq$/){
-      open(FQ,'<',$fastq) or die "Could not open $fastq for reading: $!";
-    }
-    elsif($$settings{inSuffix}=~/\.fastq\.gz/){
-      open(FQ,"gunzip -c $fastq | ") or die "Could not open $fastq for reading: $!";
-    }
-    else{
-      die "Could not determine the file type for reading based on your extension $$settings{inSuffix}";
-    }
+    my $fqFh=openFastq($fastq,$settings);
 
     my @entry; # buffer for the queue
-    while(my $entry=<FQ>){
-      $entry.=<FQ> for(2..$linesPerGroup); # e.g. 8 lines total for paired end entry
+    while(my $entry=<$fqFh>){
+      $entry.=<$fqFh> for(2..$linesPerGroup); # e.g. 8 lines total for paired end entry
       push(@entry,$entry);
       $entryCount++;
 
@@ -168,7 +155,7 @@ sub qualityTrimFastqPoly($;$){
         }
       }
     }
-    close FQ;
+    close $fqFh;
     $Q->enqueue(@entry); # get the last pieces of it entered
 
   }
@@ -199,6 +186,7 @@ sub trimCleanPolyWorker{
     for my $i (0..$poly-1){
       my $t={};
       ($$t{id},$$t{seq},undef,$$t{qual})=splice(@entryLine,0,4);
+      $$t{length}=length($$t{seq});
       dotsToNs($t,$settings);
       trimRead($t,$settings) if(!$notrim);
       $is_singleton=1 if(!read_is_good($t,$settings));
@@ -399,7 +387,7 @@ sub queue_status_updater{
 sub checkFirstXReads{
   my($infile,$numReads,$settings)=@_;
 
-  (undef,undef,$$settings{inSuffix}) = fileparse($infile,@IOextensions);
+  (undef,undef,$$settings{inSuffix}) = fileparse($infile,@fastqExt);
 
   my $warning=0;
   die "Could not find the input file $infile" if(!-e $infile);
@@ -411,18 +399,11 @@ sub checkFirstXReads{
   # figure out if the min_length is larger than any of the first X reads.
   # If so, spit out a warning. Do not change the value. The user should be allowed to make a mistake.
   logmsg "Checking minimum sequence length param on the first $numReads sequences.";
-  if($$settings{inSuffix}=~/\.fastq$/){
-    open(IN,'<',$infile) or die "Could not open $infile for reading: $!";
-  }
-  elsif($$settings{inSuffix}=~/\.fastq\.gz/){
-    open(IN,"gunzip -c $infile | ") or die "Could not open $infile for reading: $!";
-  }
-  else{
-    die "Could not determine the file type for reading based on your extension $$settings{inSuffix}";
-  }
+  my $fqFh=openFastq($infile,$settings);
+
   my $i=1;
-  while(my $line=<IN>){
-    $line.=<IN> for (1..3);
+  while(my $line=<$fqFh>){
+    $line.=<$fqFh> for (1..3);
     my ($id,$sequence)=(split("\n",$line))[0,1];
     my $length=length($sequence);
     if($length<$$settings{min_length}){
@@ -431,7 +412,7 @@ sub checkFirstXReads{
     }
     last if($i++>=$numReads);
   }
-  close IN;
+  close $fqFh;
   return $warning;
 }
 
@@ -444,7 +425,7 @@ sub autoChooseParameters{
   my %newSettings=%$settings; # copy the hash
   
   # find the metrics and put them into a hash
-  my $readMetrics=`run_assembly_readMetrics.pl '$infile' --fast`;
+  my $readMetrics=`ross_rachel.pl '$infile' --fast`;
   chomp($readMetrics);
   my($header,$values)=split /\n/, $readMetrics;
   my @header=split /\t/,$header;
@@ -452,11 +433,10 @@ sub autoChooseParameters{
   @metric{@header}=split /\t/,$values;
   
   # suggest some values in settings
-  #$newSettings{bases_to_trim}=10;
+  # TODO use avg/stdev to choose minimums
   $newSettings{min_length}=$metric{avgReadLength} - $newSettings{bases_to_trim};
   $newSettings{min_avg_quality}=$metric{avgQuality} - 5;
   $newSettings{min_quality}=$metric{avgQuality} - 5;
-  #print Dumper [\%metric,\%newSettings];die;
 
   my $newOptions; $newOptions.="$_: $newSettings{$_}, " for(qw(bases_to_trim min_length min_avg_quality min_quality));
   $newOptions=~s/,$//;
@@ -468,16 +448,8 @@ sub autoChooseParameters{
 # returns 1 for SE, 2 for PE, and -1 is for internal error
 sub checkPolyness{
   my ($infile,$settings)=@_;
-  eval{
-    require AKUtils;
-  };
-  if($@){
-    warn "WARNING: I could not understand if the file is paired end.  I will assume not.";
-    return 1;
-  }
-
-  my $poly=AKUtils::is_fastqPE($infile,{checkFirst=>20});
-  $poly++;
+  my $poly=`ross_ung.pl $infile` + 1;
+  $poly=-1 if $?;
 
   return $poly;
 }
@@ -488,12 +460,6 @@ sub nearest{
   $num=floor(($num+0.00)*100)/100;
   $num=sprintf("%.2f",$num);
   return $num;
-}
-
-sub getNumCPUs() {
-  my $num_cpus;
-  open(IN, '<', '/proc/cpuinfo'); while (<IN>) { /processor\s*\:\s*\d+/ or next; $num_cpus++; } close IN;
-  return $num_cpus || 1;
 }
 
 sub usage{
@@ -511,11 +477,11 @@ sub usage{
   --noremoveDots to skip the changing of dots to Ns and altering their qualities to zero
   -qual 64 to use an offset of 64 instead of 33(default).
   --numcpus 1 or --numcpus 2 for single or multithreaded. Currently: $$settings{numcpus}
-  --nosingletons Do not output singleton reads, which are those whose pair has been filtered out.
+  --singletons Output singleton reads, which are those whose pair has been filtered out.
   --trim-on-average Trim until an average quality is reached on the 5' and 3' ends. Ordinarily, trimming will stop when a base > min_quality is reached.
 
   Use phred scores (e.g. 20 or 30) or length in base pairs if it says P or L, respectively
-  --auto                      # to choose the following values automatically based on run_assembly_readMetrics.pl (experimental)
+  --auto                      # to choose the following values automatically based on ross_rachel.pl (experimental)
   --min_quality P             # trimming
     currently: $$settings{min_quality}
   --bases_to_trim L           # trimming

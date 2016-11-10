@@ -3,6 +3,7 @@
 # ROSS.pm: library for the Random Operations on Sequences Suite
 # Author: Lee Katz <lkatz@cdc.gov>
 # Some code taken from CG-Pipeline
+# TODO openSam()
 
 package ROSS;
 require 5.12.0;
@@ -20,7 +21,7 @@ use Thread::Queue;
 
 use Exporter qw/import/;
 our @EXPORT_OK = qw(
-             logmsg mktempdir median stdev fullPathToExec isFasta readMfa alnum
+             logmsg mktempdir median stdev fullPathToExec isFasta readMfa alnum openFastq
              @fastqExt @fastaExt @bamExt @vcfExt @richseqExt @sffExt @samExt
            );
 
@@ -31,6 +32,8 @@ our @vcfExt=qw(.vcf.gz .vcf);
 our @richseqExt=qw(.gbk .gbf .gb .embl);
 our @sffExt=qw(.sff);
 our @samExt=qw(.sam .bam);
+
+our $fhStick :shared; # Helps us open only one file at a time
 
 
 # TODO if 'die' is imported by a script, redefine
@@ -172,6 +175,29 @@ sub printSeqsToFile($$;$) {
 	}
 	close OUT;
 	return $outfile;
+}
+
+# Opens a fastq file in a thread-safe way.
+# Returns a file handle.
+sub openFastq{
+  my($fastq,$settings)=@_;
+
+  my $fh;
+
+  lock($fhStick);
+
+  my($name,$dir,$ext)=fileparse($fastq,@fastqExt);
+
+  if(!grep(/$ext/,@fastqExt)){
+    die "ERROR: could not read $fastq as a fastq file";
+  }
+
+  if($ext =~/\.gz$/i){
+    open($fh,"zcat $fastq | ") or die "ERROR: could not open $fastq for reading!: $!";
+  } else {
+    open($fh,"<",$fastq) or die "ERROR: could not open $fastq for reading!: $!";
+  }
+  return $fh;
 }
 
 1;
