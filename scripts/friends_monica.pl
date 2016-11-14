@@ -26,7 +26,7 @@ use threads::shared;
 
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
-use ROSS qw/mktempdir logmsg openFastq @fastqExt/;
+use FRIENDS qw/mktempdir logmsg openFastq @fastqExt/;
 
 $0 = fileparse($0);
 

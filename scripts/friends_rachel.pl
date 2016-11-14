@@ -24,7 +24,7 @@ use Statistics::Descriptive;
 # Custom modules
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
-use ROSS qw/mktempdir logmsg @fastaExt @fastqExt @sffExt @samExt/;
+use FRIENDS qw/mktempdir logmsg @fastaExt @fastqExt @sffExt @samExt/;
 
 use threads;
 use Thread::Queue;

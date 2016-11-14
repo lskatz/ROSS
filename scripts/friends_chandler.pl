@@ -14,7 +14,7 @@ use List::Util qw/max/;
 
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
-use ROSS qw/logmsg mktempdir openFastq/;
+use FRIENDS qw/logmsg mktempdir openFastq/;
 
 use threads;
 use Thread::Queue;
