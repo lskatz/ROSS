@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 
-# ROSS.pm: library for the Random Operations on Sequences Suite
+# Friends.pm: library for the Random Operations on Sequences Suite (ROSS)
 # Author: Lee Katz <lkatz@cdc.gov>
 # Some code taken from CG-Pipeline
 # TODO openSam()
 
-package ROSS;
+package Friends;
 require 5.12.0;
 
 use strict;

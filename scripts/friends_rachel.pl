@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# ross_rachel.pl: puts out metrics for a raw reads file
+# friends_rachel.pl: puts out metrics for a raw reads file
 # Author: Lee Katz <lkatz@cdc.gov>
 #
 # TODO make a read score that makes sense.  The score will describe

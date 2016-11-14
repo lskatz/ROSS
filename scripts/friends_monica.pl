@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# ross_monica.pl:  trim and clean a set of raw reads
+# friends_monica.pl:  trim and clean a set of raw reads
 # Author: Lee Katz <lkatz@cdc.gov>
 #
 # TODO change low-quality bases to N, based on a cutoff
@@ -425,7 +425,7 @@ sub autoChooseParameters{
   my %newSettings=%$settings; # copy the hash
   
   # find the metrics and put them into a hash
-  my $readMetrics=`ross_rachel.pl '$infile' --fast`;
+  my $readMetrics=`friends_rachel.pl '$infile' --fast`;
   chomp($readMetrics);
   my($header,$values)=split /\n/, $readMetrics;
   my @header=split /\t/,$header;
@@ -448,7 +448,7 @@ sub autoChooseParameters{
 # returns 1 for SE, 2 for PE, and -1 is for internal error
 sub checkPolyness{
   my ($infile,$settings)=@_;
-  my $poly=`ross_ung.pl $infile` + 1;
+  my $poly=`friends_ung.pl $infile` + 1;
   $poly=-1 if $?;
 
   return $poly;
@@ -481,7 +481,7 @@ sub usage{
   --trim-on-average Trim until an average quality is reached on the 5' and 3' ends. Ordinarily, trimming will stop when a base > min_quality is reached.
 
   Use phred scores (e.g. 20 or 30) or length in base pairs if it says P or L, respectively
-  --auto                      # to choose the following values automatically based on ross_rachel.pl (experimental)
+  --auto                      # to choose the following values automatically based on friends_rachel.pl (experimental)
   --min_quality P             # trimming
     currently: $$settings{min_quality}
   --bases_to_trim L           # trimming
