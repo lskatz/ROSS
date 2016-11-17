@@ -8,10 +8,13 @@ use Getopt::Long;
 use File::Basename;
 use IO::Compress::Gzip qw(gzip);
 
+use FindBin qw/$RealBin/;
+use lib "$RealBin/../lib/perl5";
+use Friends qw/logmsg/;
+
 # TODO If only one file to shuffle, just output the first SE file to stdout
 
 
-local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
 exit(main());
 
 sub main{

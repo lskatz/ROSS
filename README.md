@@ -1,5 +1,6 @@
 #Random Operations on Sequences Suite - ROSS
 
+Perform random operations on reads files.  Right now ROSS only supports fastq and fastq.gz format.
 
 ##Converting scripts from CGP and other sources to ROSS
 
@@ -13,7 +14,5 @@
 |`friends_phoebe.pl`  | N/A                                          | Randomizes reads|
 |`friends_chandler.pl`| N/A                                          | Pure perl kmer counting. No outside dependencies.|
 |`friends_ursula.pl`  | `run_assembly_removeDuplicateReads.pl`       | Removes duplicate reads and/or downsamples reads|
-
-|Not imported yet  | Formally called|Description|
-|------------------|----------------|-----------|
 |`friends_joey.pl`    | `run_assembly_shuffleReads.pl`               | Shuffles or deshuffles paired end reads|
+
