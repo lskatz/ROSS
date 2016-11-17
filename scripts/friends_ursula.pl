@@ -1,6 +1,6 @@
 #!/usr/bin/env perl 
 
-# run_assembly_trimClean: trim and clean a set of raw reads
+# friends_ursula.pl: remove duplicate reads and/or bin them and/or downsample
 # Author: Lee Katz <lkatz@cdc.gov>
 # TODO: make a low-memory binning method, combining only 
 # a few reads at a time and perhaps using temporary
@@ -9,9 +9,10 @@
 my ($VERSION) = ('$Id: $' =~ /,v\s+(\d+\S+)/o);
 
 use strict;
-use FindBin;
-use lib "$FindBin::RealBin/../lib";
-$ENV{PATH} = "$FindBin::RealBin:".$ENV{PATH};
+use FindBin qw/$RealBin/;
+use lib "$RealBin/../lib/perl5";
+$ENV{PATH} = "$RealBin:".$ENV{PATH};
+use Friends qw/logmsg openFastq mktempdir/;
 
 use Getopt::Long;
 use File::Temp ('tempdir');
@@ -29,7 +30,6 @@ use threads::shared;
 
 $0 = fileparse($0);
 local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; my $caller=(caller(1))[3]; $caller=~s/::main//; die("$0: $caller: ".$e); };
-sub logmsg {print STDERR "$0: ".(caller(1))[3].": @_\n";}
 
 my %threadStatus:shared;
 my @IOextensions=qw(.fastq .fastq.gz .fq);
@@ -37,18 +37,13 @@ my @IOextensions=qw(.fastq .fastq.gz .fq);
 exit(main());
 
 sub main{
-  my $settings = {
-      appname => 'cgpipeline',
-  };
+  my $settings = {};
 
-  # get settings from cg_pipeline/conf/cgpipelinerc and ./cgpipelinerc
-  $settings=AKUtils::loadConfig($settings);
   # get CLI flags into $settings with Getopt::Long
   GetOptions($settings,qw(help tempdir=s downsample=f length=i sizeTo|size=s stdin stdin-compressed highest=i bin!)) or die $!;
   # additional settings using ||= operator
   $$settings{bin}//=1;
-  $$settings{poly}||=1; # SE by default
-  $$settings{tempdir}||=AKUtils::mktempdir(); # any temp file you make should go under the tempdir
+  $$settings{tempdir}||=mktempdir(); 
   $$settings{downsample}||=1;
   $$settings{highest}||=40+33; # I is the 9th letter... don't want to go past Z
   my $infile=[@ARGV];
@@ -89,37 +84,29 @@ sub readFastq{
 
   my ($basename,$dir,$inSuffix) = fileparse($infile,@IOextensions);
 
-  my $poly=AKUtils::is_fastqPE($infile,$settings)+1;
-  $$settings{poly}=$poly if($poly==1); # if you see SE anywhere, then it is safer to assume SE for the entirety
+  my $fastqFh=openFastq($infile,$settings);
 
-  if($inSuffix=~/\.fastq$/){
-    open(FQ,'<',$infile) or die "Could not open $infile for reading: $!";
-  }
-  elsif($inSuffix=~/\.fastq\.gz/){
-    open(FQ,"gunzip -c $infile | ") or die "Could not open $infile for reading: $!";
-  }
-  else{
-    die "Could not determine the file type for reading based on your extension $inSuffix";
-  }
+  my $poly=`friends_ung.pl $infile` + 1;
   logmsg "Reading $infile with poly=$poly";
   my $i=0;
   my @reads=();
-  while(my $id=<FQ>){
-    my $sequence=<FQ>; chomp($sequence);
-    my $discard=<FQ>;
-    my $qual=<FQ>;
+  while(my $id=<$fastqFh>){
+    my $sequence=<$fastqFh>; chomp($sequence);
+    my $discard=<$fastqFh>;
+    my $qual=<$fastqFh>;
     my $read="$id$sequence\n+\n$qual";
     for(my $j=1;$j<$poly;$j++){
-      my $id2=<FQ>;
-      my $sequence2=<FQ>; chomp($sequence2);
-      my $discard2=<FQ>;
-      my $qual2=<FQ>;
+      my $id2=<$fastqFh>;
+      my $sequence2=<$fastqFh>; 
+      chomp($sequence2);
+      my $discard2=<$fastqFh>;
+      my $qual2=<$fastqFh>;
       $read.="$id2$sequence2\n+\n$qual2";
     }
 
     push(@reads,$read);
   }
-  close FQ;
+  close $fastqFh;
   
   return \@reads;
 }
@@ -214,8 +201,8 @@ sub bestRead{
 
   # Tack on how many reads were combined
   if($numReads>1){
-    $id1.=" CGP:combinedReads=$numReads";
-    $id2.=" CGP:combinedReads=$numReads";
+    $id1.=" combinedReads=$numReads";
+    $id2.=" combinedReads=$numReads";
   }
   return "$id1\n$seq1\n+\n$qual1\n$id2\n$seq2\n+\n$qual2\n" if($seq2);
   return "$id1\n$seq1\n+\n$qual1\n";
