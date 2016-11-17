@@ -39,7 +39,12 @@ our $fhStick :shared; # Helps us open only one file at a time
 
 # TODO if 'die' is imported by a script, redefine
 # sig die in that script as this function.
-$SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; die("$0: ".(caller(1))[3].": ".$e); };
+$SIG{'__DIE__'} = sub { 
+  my $e = $_[0]||""; 
+  $e =~ s/(at [^\s]+? line \d+\.$)/\nStopped $1/; 
+  my $caller=(caller(1))[3] || (caller(0))[3];
+  die("$0: $caller: $e"); 
+};
 
 # Centralized logmsg
 #sub logmsg {print STDERR "$0: ".(caller(1))[3].": @_\n";}
