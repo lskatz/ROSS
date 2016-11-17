@@ -188,6 +188,10 @@ sub printSeqsToFile($$;$) {
 sub openFastq{
   my($fastq,$settings)=@_;
 
+  if($fastq eq '-'){
+    return \*STDIN;
+  }
+
   my $fh;
 
   my($name,$dir,$ext)=fileparse($fastq,@fastqExt);
