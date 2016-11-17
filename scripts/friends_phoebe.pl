@@ -72,7 +72,7 @@ sub generateRandomReads{
       $qual.=$qual[ floor(rand($numQual)) ];
     }
 
-    $readStr.='@read'.$i."\n".$seq."\n".'+'.$qual."\n";
+    $readStr.='@read'.$i."\n".$seq."\n"."+\n".$qual."\n";
   }
 
   return $readStr;
