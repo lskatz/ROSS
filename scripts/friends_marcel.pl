@@ -39,7 +39,7 @@ sub main{
   my $kmercount=$kmer->count;
   my $histogram=$kmer->histogram;
 
-  logmsg "Histogram:\n".join("\n",@$histogram);
+  #logmsg "Histogram:\n".join("\n",@$histogram);
 
   # Find peaks and valleys using the simplified
   # 'delta' algorithm.
@@ -197,5 +197,13 @@ sub usage{
   local $0=basename $0;
   "$0: alters quality scores of a fastq file based on kmer abundance
   Usage: $0 file.fastq
+
+  Steps: count kmers
+         make histogram
+         Find areas between two 'valleys' of kmer abundance
+         Calculate mean/stdev for each area
+         For areas within 1 stdev of a mean, add +1 score for each base's phred score
+         For areas further than 2 stdevs of a mean, subtract 1.
+         Traverse through each read to uncover kmers and make the score readjustment
   "
 }
