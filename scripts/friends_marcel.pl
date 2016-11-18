@@ -39,10 +39,14 @@ sub main{
   my $kmercount=$kmer->count;
   my $histogram=$kmer->histogram;
 
+  logmsg "Histogram:\n".join("\n",@$histogram);
+
   # Find peaks and valleys using the simplified
   # 'delta' algorithm.
   logmsg "Finding peaks and valleys in kmer coverage";
   my $peaks=findThePeaksAndValleys($histogram,$$settings{delta},$settings);
+  logmsg "Peaks   at k={".join(",",map{$$_[0]} @{ $$peaks{peaks} })."}";
+  logmsg "Valleys at k={".join(",",map{$$_[0]} @{ $$peaks{valleys} })."}";
 
   # re-score reads according to kmer
   logmsg "Determining score adjustments";
@@ -158,7 +162,6 @@ sub rescoreReads{
   my $updatedReads="";
 
   my $fh=openFastq($fastq);
-  logmsg "opening $fastq";
   while(my $id=<$fh>){
     my $sequence=<$fh>;
     my $plus=<$fh>;
@@ -172,6 +175,15 @@ sub rescoreReads{
       # add the relative score
       for(my $j=$i;$j<$i+$kmerlength;$j++){
         $qual[$j]+=$$kmerCountScore[ $$kmercount{ substr($sequence,$i,$kmerlength) } ];
+      }
+    }
+
+    # After rescoring, enforce some min/max limits
+    for(@qual){
+      if($_ > 40){
+        $_=40;
+      }elsif($_ < 0){
+        $_=0;
       }
     }
 

@@ -145,7 +145,7 @@ sub histogram{
   my($self)=@_;
   my %hist=();
   my @hist=(0); # initialize the histogram with a count of zero kmers happening zero times
-  $hist[0]=4**$self->{kmerlength}; # or maybe it should be initialized to the total number of possibilities.
+  #$hist[0]=4**$self->{kmerlength}; # or maybe it should be initialized to the total number of possibilities.
 
   if(!values(%{ $self->{kmers} } )){
     die "ERROR: kmers have not been counted yet. Run Kmer->count before running Kmer->histogram";
@@ -158,7 +158,7 @@ sub histogram{
   # Turn this hash into an array
   for(1..max(keys(%hist))){
     $hist[$_] = $hist{$_} || 0;
-    $hist[0]=$hist[0] - $hist[$_];
+    #$hist[0]=$hist[0] - $hist[$_]; # subtract off from the total space of possible kmers
   }
 
   $self->{hist}=\@hist;
