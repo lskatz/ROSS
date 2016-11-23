@@ -307,20 +307,19 @@ sub dotsToNs{
 sub numToTrim{
   my($qual,$read,$settings)=@_;
   my @rQual=reverse(@$qual); # for 3' trimming
-  my $length=$$read{length};
-  # TODO set bases_to_trim equal to the read length if larger than
-  #   ...or should I?  Might be a huge time cost.
+
+  my $bases_to_trim=min($$read{length},$$settings{bases_to_trim});
 
   my($numToTrim3,$numToTrim5)=(0,0);
   if($$settings{'trim-on-average'}){
-    for(my $i=0;$i<$$settings{bases_to_trim};$i++){
+    for(my $i=0;$i<$bases_to_trim;$i++){
       if(sum(@$qual[0..$i])/($i+1)<$$settings{min_quality}){
         $numToTrim5++;
       } else {
         last if($i>5); # check minimum 5 bases before quitting
       }
     }
-    for(my $i=0;$i<$$settings{bases_to_trim};$i++){
+    for(my $i=0;$i<$bases_to_trim;$i++){
       if(sum(@rQual[0..$i])/($i+1)<$$settings{min_quality}){
         $numToTrim3++;
       } else {
@@ -330,14 +329,14 @@ sub numToTrim{
   } 
   # ELSE trimming until the first good quality
   else {
-    for(my $i=0;$i<$$settings{bases_to_trim};$i++){
+    for(my $i=0;$i<$bases_to_trim;$i++){
       if($$qual[$i]<$$settings{min_quality}){
         $numToTrim5++;
       } else {
         last;
       }
     }
-    for(my $i=0;$i<$$settings{bases_to_trim};$i++){
+    for(my $i=0;$i<$bases_to_trim;$i++){
       if($rQual[$i]<$$settings{min_quality}){
         $numToTrim3++;
       } else {
@@ -439,7 +438,7 @@ sub autoChooseParameters{
   $newSettings{min_quality}=$metric{avgQuality} - 5;
 
   my $newOptions; $newOptions.="$_: $newSettings{$_}, " for(qw(bases_to_trim min_length min_avg_quality min_quality));
-  $newOptions=~s/,$//;
+  $newOptions=~s/,\s*$//;
   logmsg "Auto-choose was specified. New options are now: $newOptions";
   
   return \%newSettings;
