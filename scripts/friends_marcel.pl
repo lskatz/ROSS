@@ -22,11 +22,12 @@ exit(main());
 
 sub main{
   my $settings={};
-  GetOptions($settings,qw(help numcpus=i tempdir=s kmerlength|kmer=i delta=i)) or die $!;
+  GetOptions($settings,qw(help gt|greater-than=i numcpus=i tempdir=s kmerlength|kmer=i delta=i)) or die $!;
   $$settings{kmerlength} ||=21;
   $$settings{delta}      ||=100;
   $$settings{tempdir}    ||=mktempdir();
   $$settings{numcpus}    ||=1;
+  $$settings{gt}         ||=1;
 
   my($fastq)=@ARGV;
   die usage() if(!$fastq || $$settings{help});
@@ -62,8 +63,16 @@ sub main{
 sub scoreKmerCounts{
   my($peaks,$kmercount,$histogram,$settings)=@_;
 
-  # From valley to the next valley
+  my $scoreIncrement=1/$$settings{kmerlength};
+
+  # Initialize the score adjustments
   my @kmerCountScore=(0) x scalar(@$histogram);
+  # Penalize kmers less than or equal to the greater-than parameter
+  for(0..$$settings{gt}){
+    $kmerCountScore[$_]=-$scoreIncrement;
+  }
+
+  # From valley to the next valley
   for(my $peakCount=0;$peakCount<scalar(@{$$peaks{peaks}});$peakCount++){
     
     # Define the peaks as being from valley to valley.
@@ -78,24 +87,44 @@ sub scoreKmerCounts{
     }
 
     # The peak has been defined, so find the mean and stdev
-    my $stat=Statistics::Descriptive::Full->new();
+    my @countOfCounts=();
     for(my $j=$firstValley;$j<=$secondValley;$j++){
       next if($j==0);
-      while(my($kmer,$count)=each(%$kmercount)){
-        $stat->add_data($count) if($count==$j);
-      }
+      push(@countOfCounts,(($j) x $$histogram[$j]));
     }
+    #for(my $j=$firstValley;$j<=$secondValley;$j++){
+    #  next if($j==0);
+    #  for my $count(values(%$kmercount)){
+    #    push(@countOfCounts,$count) if($count == $j);
+    #  }
+    #}
+    my $stat=Statistics::Descriptive::Full->new();
+    $stat->add_data(\@countOfCounts);
+
+    next if($firstPeak <= $$settings{gt});
+
+    # Cache these results in a variable because we don't
+    # want to call the functions too much in the loop.
+    my $mean=$stat->mean;
+    my $stdev=$stat->standard_deviation;
+
+    logmsg "Determining adjustments between $firstValley and $secondValley with a coverage distribution of ".sprintf('%0.2f ± %0.2f',$mean,$stdev);
 
     # Score kmer counts:
     #   -1 if it is outside of 2 stdev
     #   +1 if it is inside  of 1 stdev
     for(my $j=$firstValley;$j<$secondValley;$j++){
-      if($j < floor($stat->mean - 2*$stat->standard_deviation)){
-        $kmerCountScore[$j]=-1;
-      } elsif($j >= floor($stat->mean - $stat->standard_deviation) && $j <= ceil($stat->mean + 1*$stat->standard_deviation)){
-        $kmerCountScore[$j]= 1;
-      } elsif($j > ceil($stat->mean + 2*$stat->standard_deviation)){
-        $kmerCountScore[$j]=-1;
+      # If outside of 2 stdev: -1
+      if($j < floor($mean - 2*$stdev)){
+        $kmerCountScore[$j]=-$scoreIncrement;
+      }
+      # If inside of 1 stdev: +1
+      elsif($j >= floor($mean - $stdev) && $j <= ceil($mean + $stdev)){
+        $kmerCountScore[$j]= $scoreIncrement;
+      }
+      # If outside of 2 stdev: -1
+      elsif($j > ceil($mean + 2*$stdev)){
+        $kmerCountScore[$j]=-$scoreIncrement;
       }
     }
   }
@@ -180,6 +209,7 @@ sub rescoreReads{
 
     # After rescoring, enforce some min/max limits
     for(@qual){
+      $_=int($_);
       if($_ > 40){
         $_=40;
       }elsif($_ < 0){
@@ -197,6 +227,14 @@ sub usage{
   local $0=basename $0;
   "$0: alters quality scores of a fastq file based on kmer abundance
   Usage: $0 file.fastq
+
+  --numcpus    1    Number of processors to use 
+  --tempdir    ''   If you want to specify a different temp dir
+  --kmerlength 21   Choose a kmer length to use
+  --delta      100  How different a coverage amplitude needs to be
+                    before the script recognizes a peak or valley
+  --gt         1    Skip peaks less than or equal to this 
+                    kmer coverage
 
   Steps: count kmers
          make histogram
