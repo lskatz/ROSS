@@ -90,8 +90,10 @@ sub randomizeReads{
   }
 
   my $reads="";
+  my $numreads=0;
   for(shuffle(@readEntry)){
     $reads.=$_;
+    last if(++$numreads == $$settings{numreads});
   }
   return $reads;
 }
