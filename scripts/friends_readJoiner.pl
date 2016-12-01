@@ -59,6 +59,8 @@ sub main{
   die usage() if(!$fastq || $$settings{help});
   die "ERROR: I could not find fastq at $fastq" if(!-e $fastq);
 
+  # This funtion prints any reads that can be joined
+  # and then returns unjoined reads
   my $reads=joinReads($fastq,$settings);
 
   # Write out the fwd/rev reads
@@ -74,6 +76,8 @@ sub main{
       print REV $_;
     }
     close REV;
+  }else{
+    logmsg "Forward and reverse reads were not requested";
   }
 
   return 0;
@@ -89,7 +93,7 @@ sub joinReads{
     
     # Calculate and print the merged read, but if it doesn't 
     # work, then save the forward and reverse
-    if(! calculateOverlap($fwdRead,$revRead,$settings) ){
+    if(! printMergedRead($fwdRead,$revRead,$settings) ){
       push(@fwdRead,$fwdRead);
       push(@revRead,$revRead);
     }
@@ -98,7 +102,7 @@ sub joinReads{
   return {fwd=>\@fwdRead, rev=>\@revRead};
 }
 
-sub calculateOverlap{
+sub printMergedRead{
   my($fwdRead,$revRead,$settings)=@_;
   chomp($fwdRead,$revRead);
   
@@ -129,12 +133,12 @@ sub calculateOverlap{
 
   # Where does the matching happen?
   my($indexF,$indexR)=searchForFirstMatch(\@binarySequenceF,\@binarySequenceR,$$settings{overlap});
-  
+
   # Merge the read
   my $mergedRead=mergeReads($indexF,$indexR,\@binarySequenceF,\@binarySequenceR,$qualF,$qualR,$$settings{overlap},$$settings{tolerance});
 
-  if($$mergedRead{joined}){
-    print "$idF\n$$mergedRead{joined}\n+\n$$mergedRead{joinedQual}\n";
+  if($$mergedRead{joinedSequence}){
+    print "$idF-joined\n$$mergedRead{joinedSequence}\n+\n$$mergedRead{joinedQual}\n";
     return 1;
   } else {
     return 0;
@@ -158,19 +162,22 @@ sub searchForFirstMatch{
       # Go backwards from positions $f and $r + $overlap
       # to see if there is an overlap.
       my $i;
-      for($i=$overlap;$i>=0;$i--){
+      for($i=$overlap-1;$i>=0;$i--){
         #last if($i-$r > $lengthR || $i-$f > $lengthF);
         # Test if there is a match using binary operator.
         # If there is no match, then jump ahead by $overlap
         # length and try again.
         if(($$binarySequenceR[$r+$i] & $$binarySequenceF[$f+$i]) == 0){
-          #$f+=$overlap;
-          $r+=$overlap-1; # advance by overlap - 1 because $r will advance by 1 in the next iteration
+          # advance by what we've looked at so far
+          if($i-2 > 1){
+            $r+=$i-2;
+          }
           next SEARCH_R;
         }
       }
 
-      last if($i >= 0); # make sure we made it through the loop ok
+      # $i is -1 if we made it through the loop ok
+      last if($i != -1);
       #my $stopF=$overlap+$f;
       #my $stopR=$overlap+$r;
       return ($f,$r);
@@ -184,7 +191,8 @@ sub mergeReads{
   my($indexF,$indexR,$binarySequenceF,$binarySequenceR,$qualF,$qualR,$overlap,$tolerance)=@_;
 
   my %return=(
-    fwd=>$binarySequenceF,rev=>$binarySequenceR,
+    #fwd=>binaryToDna($binarySequenceF),rev=>binaryToDna($binarySequenceR),joinedSequence=>"",
+    joinedSequence=>"",
   );
 
   if($indexF == -1){
@@ -209,6 +217,9 @@ sub mergeReads{
   #   and a special fifth
   #   F -----------------
   #   R -----------------
+  #
+  #   Do not accept the second case, where F and R are opposite
+  #   of what you'd expect.
 
   # The merged read starts with whatever is not going to be joined
   # from the forward read, plus the overlap length that was
@@ -232,44 +243,88 @@ sub mergeReads{
     $f++;
     $r++;
   }
+  
+  # If the rev read is inside of the fwd read,
+  # and the entire read is the match to the fwd,
+  # return the more complete read.
+  if(
+       $indexR == 0       # the rev-read match starts with the beginning of the read
+    && $lengthR == $r     # the rev-read match goes to the end of the read
+  ){
+    @return{qw(joinedSequence joinedQual)}=(binaryToDna($binarySequenceF),$qualF);
+    return \%return;
+  }
+  # If the fwd read is inside of the rev read,
+  # and the entire read is the match to the rev,
+  # return the more complete read.
+  elsif(
+       $indexF == 0       # the fwd-read match starts with the beginning of the read
+    && $lengthF == $f     # the fwd-read match goes to the end of the read
+  ){
+    @return{qw(joinedSequence joinedQual)}=(binaryToDna($binarySequenceR),$qualR);
+    return \%return;
+  }
+  # If the match doesn't extend to the end of the fwd read,
+  # then this is also not quite a match. Return false.
+  # Same with not not matching on the start of the reverse read.
+  elsif($lengthF != $f || $indexR != 0){
+    return \%return;
+  }
+
+  # Subtract one more time to make the range inclusive
+  $f--;
+  $r--;
 
   # TODO
   # Right now if the merge is in the middle of the read, the first
   # part of the unmerged read will come from F and the unmerged
   # at the tail will come from R.  However, the highest quality
   # should be used.
+  my @phredF=split(//,$qualF);
+  my @phredR=split(//,$qualR); # QualR has already been reversed to match the order of nts
+  for(@phredF,@phredR){
+    $_=ord($_)-33;
+  }
 
   # The range of matching is $indexF to $f and $indexR to $r.
-  my @mergedBinarySequence;
-  if($indexF <= $indexR){
+  my (@mergedBinarySequence,@mergedPhred);
+  if($indexR <= $indexF){ # lower indexR indicates that the fwd read is first
     push(@mergedBinarySequence,@$binarySequenceF[0..$indexF-1]);
+    push(@mergedPhred,@phredF[0..$indexF-1]);
   } elsif($indexR < $indexF){
     push(@mergedBinarySequence,@$binarySequenceR[0..$indexR-1]);
+    push(@mergedPhred,@phredR[0..$indexR-1]);
   }
   
   # Accept the merged sequence
   push(@mergedBinarySequence,@$binarySequenceF[$indexF..$f]);
+  push(@mergedPhred,@phredR[$indexF..$f]); # for now, use fwd quality scores
 
-  # Finish off the merge
+  # Finish off the merge.
+  # If the $r is less than $f, then we have this situation
+  # F -------------
+  # R     --------------
   if($r<=$f){
+    # Add the rest of the rev read
     push(@mergedBinarySequence,@$binarySequenceR[$r+1..$lengthR-1]);
+    push(@mergedPhred,@phredR[$r+1..$lengthR-1]);
   }elsif($f < $r){
+    # Add the rest of the fwd read
     push(@mergedBinarySequence,@$binarySequenceF[$f+1..$lengthF-1]);
+    push(@mergedPhred,@phredF[$f+1..$lengthF-1]);
   }
 
-  my $marginF=$lengthF-$f;
-  my $marginR=$lengthR-$r;
-  print join("\n",
-    "$indexF-$f($marginF)  $indexR-$r($marginR)",
-    " " x $marginR . binaryToDna(\@mergedBinarySequence),
-    " " x $marginF . binaryToDna($binarySequenceF),
-    " " x $marginR . binaryToDna($binarySequenceR)
-  )."\n";
-  die "TODO more validation";
-
-  my $mergedSequence=binaryToDna(\@mergedBinarySequence);
-
-  #@return{qw(joined start stop joinedQual)}=($mergedSequence,$index,$i-1,$mergedQual);
+  # DEBUG
+  #my $padding=$indexF-$indexR;
+  #my $str="";
+  #$str.=substr($_,-1) for(0..40);
+  #$str.="\n      ";
+  #$str.=substr($_,-1) for(0..40);
+  #die "\n$indexF-$f $indexR-$r\n$str\n".binaryToDna($binarySequenceF)."\n". " " x $padding . binaryToDna($binarySequenceR)."\n";
+  
+  #die binaryToDna(\@mergedBinarySequence)."\n".binaryToDna(\@mergedPhred) if(@mergedBinarySequence != @mergedPhred);
+  
+  @return{qw(joinedSequence joinedQual)}=(binaryToDna(\@mergedBinarySequence),phredToQual(\@mergedPhred));
 
   return \%return;
 }
@@ -281,6 +336,30 @@ sub binaryToDna{
     $dna.=$REV_NT{$_};
   }
   return $dna;
+}
+
+sub phredToQual{
+  my($phred,$settings)=@_;
+  my $qual;
+  for(@$phred){
+    $_//=0;
+    $qual.=chr($_ + 33);
+  }
+  return $qual;
+}
+
+sub mergePhred{
+  my($phred1,$phred2)=@_;
+  my @mergedPhred;
+  my $num=@$phred1;
+  for(my $i=0;$i<$num;$i++){
+    my $p1=10**((-$$phred1[$i])/10);
+    my $p2=10**((-$$phred2[$i])/10);
+    push(@mergedPhred,
+      -10 * log($p1*$p2)/log(10)
+    );
+  }
+  return \@mergedPhred;
 }
 
 sub usage{
