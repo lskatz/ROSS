@@ -14,8 +14,8 @@ All scripts accept the parameters
 
 |script               |Description|    |
 |---------------------|-----------|----|
-|`friends_monica.pl`  | Trims and cleans a fastq file| ![Monica](/icons/monica.jpg) |
-|`friends_carol.pl`   | Convert any fastq file to a standard four-line-per-entry format| ![Carol](/icons/carol.jpg) | 
+|`friends_monica.pl`  | Trims and cleans a fastq file| ![Monica](/images/monica.jpg) |
+|`friends_carol.pl`   | Convert any fastq file to a standard four-line-per-entry format| ![Carol](/images/carol.jpg) | 
 |`friends_rachel.pl`  | Prints basic read metrics|
 |`friends_ung.pl`     | Determines paired-endedness|
 |`friends_ross.pl`    | Makes sure a fastq file is in a standard format and is unbroken |
