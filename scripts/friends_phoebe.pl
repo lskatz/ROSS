@@ -101,5 +101,7 @@ sub randomizeReads{
 sub usage{
   "$0: Generate random reads or shuffle reads
   Usage: $0 --numreads 100 --readlength 150
+         $0 --numreads 100 file.fastq[.gz]
   "
 }
+
