@@ -55,7 +55,7 @@ sub main() {
   $$settings{'zero-quality'}=chr($$settings{qualOffset}); # zero quality
   
   die usage($settings) if($$settings{help});
-  my $infile=$$settings{infile} or die "Error: need an infile\n".usage($settings);
+  my $infile=$$settings{infile} || $ARGV[0] || die "Error: need an infile\n".usage($settings);
   my $outfile=$$settings{outfile} or die "Error: need an outfile\n".usage($settings);
 
   my $outfileDir;
