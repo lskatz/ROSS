@@ -10,7 +10,7 @@ All scripts accept the parameters
 * `--numcpus` Not all scripts will take advantage of numcpus.
 * `--tempdir`
 
-##Converting scripts from CGP and other sources to ROSS
+## Ross script descriptions
 
 |script               |Description|    |
 |---------------------|-----------|----|
