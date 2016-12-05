@@ -19,10 +19,10 @@ All scripts accept the parameters
 |`friends_rachel.pl`  | Prints basic read metrics| ![Rachel](/images/rachel.jpg) |
 |`friends_ung.pl`     | Determines paired-endedness| ![UNG](/images/UNG.png) |
 |`friends_ross.pl`    | Makes sure a fastq file is in a standard format and is unbroken |
-|`friends_phoebe.pl`  | Randomizes reads|
-|`friends_chandler.pl`| Pure perl kmer counting. No outside dependencies.|
-|`friends_marcel.pl`  | Rescores reads based on kmer abundance |
-|`friends_ursula.pl`  | Removes duplicate reads and/or downsamples reads|
-|`friends_joey.pl`    | Shuffles or deshuffles paired end reads|
-|`friends_barry.pl`   | Joins overlapping paired ends together |
+|`friends_phoebe.pl`  | Randomizes reads| ![Phoebe](/images/phoebe.png) |
+|`friends_chandler.pl`| Pure perl kmer counting. No outside dependencies.| ![Chandler](/images/chander.png) |
+|`friends_marcel.pl`  | Rescores reads based on kmer abundance | ![Marcel](/images/marcel.png) | 
+|`friends_ursula.pl`  | Removes duplicate reads and/or downsamples reads| ![Ursula](/images/ursula.png) | 
+|`friends_joey.pl`    | Shuffles or deshuffles paired end reads| ![Joey](/images/joey.png) |
+|`friends_barry.pl`   | Joins overlapping paired ends together | ![Barry](/images/barry.png) |
 
