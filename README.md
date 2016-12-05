@@ -18,7 +18,7 @@ All scripts accept the parameters
 |`friends_carol.pl`   | Convert any fastq file to a standard four-line-per-entry format| ![Carol](/images/carol.jpg) | 
 |`friends_rachel.pl`  | Prints basic read metrics| ![Rachel](/images/rachel.jpg) |
 |`friends_ung.pl`     | Determines paired-endedness| ![UNG](/images/UNG.png) |
-|`friends_ross.pl`    | Makes sure a fastq file is in a standard format and is unbroken |
+|`friends_ross.pl`    | Makes sure a fastq file is in a standard format and is unbroken | ![Ross](/images/ross.png) | 
 |`friends_phoebe.pl`  | Randomizes reads| ![Phoebe](/images/phoebe.png) |
 |`friends_chandler.pl`| Pure perl kmer counting. No outside dependencies.| ![Chandler](/images/chander.png) |
 |`friends_marcel.pl`  | Rescores reads based on kmer abundance | ![Marcel](/images/marcel.png) | 
