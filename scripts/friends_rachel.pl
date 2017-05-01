@@ -119,6 +119,7 @@ sub printReadMetricsFromFile{
   my $avgQual=round($count{qualSum}/$count{numBases});
   my $avgReadLength=round($count{numBases}/$count{extrapolatedNumReads});
   my $isPE=`run_assembly_isFastqPE.pl $file`;
+  chomp($isPE);
   my $medianFragLen='.';
   if(grep(/$ext/,@samExt)){
     # Bam files are PE if they have at least some fragment sizes.
