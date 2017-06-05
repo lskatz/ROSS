@@ -1,4 +1,4 @@
-#Random Operations on Sequences Suite - ROSS
+# Random Operations on Sequences Suite - ROSS
 
 Perform random operations on reads files.  Right now ROSS only supports fastq and fastq.gz format.
 
