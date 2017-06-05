@@ -28,11 +28,12 @@ exit(main());
 
 sub main{
   my $settings={};
-  GetOptions($settings,qw(numcpus=i readlength=i numreads=i tempdir=s help)) or die $!;
+  GetOptions($settings,qw(numcpus=i readlength=i numreads=i numbases=i tempdir=s help)) or die $!;
   $$settings{numcpus}||=1;
   $$settings{readlength}||=150;
   $$settings{numreads}||=1000;
   $$settings{tempdir}||=mktempdir();
+  $$settings{numbases}||=0;
 
   @qual=initialQualScores();
 
@@ -82,26 +83,51 @@ sub randomizeReads{
   my($infiles,$settings)=@_;
 
   my @readEntry;
+  my %basesPerRead;
   for my $infile(@$infiles){
     my $fh=openFastq($infile,$settings);
-    while(my $read=<$fh>.<$fh>.<$fh>.<$fh>){
+    while(my $id=<$fh>){
+      my $sequence=<$fh>;
+      my $plus=<$fh>;
+      my $qual=<$fh>;
+      my $read=$id.$sequence.$plus.$qual;
       push(@readEntry,$read);
+
+      # Record the number of bases per read
+      if($$settings{numbases}){
+        chomp($sequence);
+        $basesPerRead{$read}=length($sequence);
+      }
     }
   }
 
   my $reads="";
   my $numreads=0;
+  my $numBases=0;
   for(shuffle(@readEntry)){
     $reads.=$_;
     last if(++$numreads == $$settings{numreads});
+    
+    # Wrap it up if we have enough bases
+    if($$settings{numbases}){
+      $numBases+=$basesPerRead{$_};
+      last if($numBases > $$settings{numbases});
+    }
   }
   return $reads;
 }
 
 sub usage{
   "$0: Generate random reads or shuffle reads
-  Usage: $0 --numreads 100 --readlength 150
+  Usage: 
+         # Completely random reads
+         $0 --numreads 100 --readlength 150
+
+         # Get reads from a real fastq file; do not truncate.
          $0 --numreads 100 file.fastq[.gz]
+
+         # 1x coverage for many bacterial genomes
+         $0 --numbases 5000000 file.fastq[.gz]
   "
 }
 
