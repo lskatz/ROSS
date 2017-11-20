@@ -10,10 +10,9 @@ use IO::Compress::Gzip qw(gzip);
 
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
-use Friends qw/logmsg/;
+use Friends;
 
 # TODO If only one file to shuffle, just output the first SE file to stdout
-
 
 exit(main());
 
@@ -57,15 +56,15 @@ sub deshuffleSeqs{
   my $inFh;
   if(! -t STDIN){
     $inFh=*STDIN;
+  } elsif(defined($shouldNotExist)){
+    die "ERROR: I can only deshuffle one file at a time but more were given.";
   } elsif(@ARGV==1){
     if(is_gzipped($seqFile,$settings)){
       open($inFh,"gunzip -c '$seqFile' |") or die "Could not open/gunzip shuffled fastq file $seqFile: $!";
     } else {
       open($inFh,"<",$seqFile) or die "Could not open shuffled fastq file $seqFile: $!";
     }
-  } elsif(@ARGV > 1){
-    die "ERROR: I can only deshuffle one file at a time but more were given.";
-  } elsif(@ARGV < 1){
+  } elsif(!defined($seqFile)){
     die "ERROR: I need stdin or a file to deshuffle.";
   } else {
     die "INTERNAL ERROR";
