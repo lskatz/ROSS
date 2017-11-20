@@ -8,7 +8,7 @@ Some or many of them are large and so they will be displayed on multiple lines f
 This works by sorting by GC content, which plays into how the gzip algorithm works.
 `friends_joey.pl` is used to shuffle the forward and reverse reads and then used to
 deshuffle them.  The actual reads remain the same but are sorted differently, yielding
-an estimated 10-30% compression gain.
+an estimated 10-30% compression gain.  Please see Torsten's blog for more details.  http://thegenomefactory.blogspot.com.au/2012/11/sorting-fastq-files-by-sequence-length.html?m=1
 
     friends_joey.pl Forward.fastq.gz Reverse.fastq.gz | \
       paste - - - - - - - - | \
