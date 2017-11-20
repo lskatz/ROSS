@@ -20,8 +20,8 @@ an estimated 10-30% compression gain.
 
 Test that the content hasn't changed by sorting and hash-summing
 
-    zcat 1.fastq.gz | sort | md5sum
+    zcat 1.fastq.gz       | sort | md5sum
     zcat Forward.fastq.gz | sort | md5sum
-    zcat 2.fastq.gz | sort | md5sum
+    zcat 2.fastq.gz       | sort | md5sum
     zcat Reverse.fastq.gz | sort | md5sum
 
