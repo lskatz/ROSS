@@ -15,7 +15,7 @@ use List::Util qw/max/;
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
 use Friends qw/logmsg mktempdir openFastq/;
-use Kmer;
+use Bio::Kmer;
 
 use threads;
 use Thread::Queue;

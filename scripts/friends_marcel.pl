@@ -11,7 +11,7 @@ use File::Basename qw/basename fileparse/;
 use FindBin qw/$RealBin/;
 use lib "$RealBin/../lib/perl5";
 use Friends qw/logmsg mktempdir openFastq/;
-use Kmer;
+use Bio::Kmer;
 
 # http://perldoc.perl.org/perlop.html#Symbolic-Unary-Operators
 # +Inf and -Inf will be a binary complement of all zeros
