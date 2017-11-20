@@ -20,7 +20,7 @@ exit(main());
 sub main{
   local $0=fileparse $0;
   my $settings={};
-  GetOptions($settings,qw(deshuffle help gzip));
+  GetOptions($settings,qw(deshuffle help gzip numcpus=i));
   die usage($settings) if($$settings{help});
 
   for(@ARGV){
@@ -29,9 +29,7 @@ sub main{
 
   my $numReads;
   if($$settings{deshuffle}){
-    die "ERROR: need a file to deshuffle\n". usage() if(@ARGV<1);
-    my($seqFile)=@ARGV;
-    $numReads=deshuffleSeqs($seqFile,$settings);
+    $numReads=deshuffleSeqs($settings);
   } else {
     die "ERROR: need >two files to shuffle\n". usage() if(@ARGV<2);
     die "ERROR: need an even number of files to shuffle\n".usage() if(@ARGV % 2==1);
@@ -51,7 +49,27 @@ sub is_gzipped{
 }
 
 sub deshuffleSeqs{
-  my($seqFile,$settings)=@_;
+  my($settings)=@_;
+
+  my ($seqFile,$shouldNotExist)=(@ARGV);
+
+  # Where are we getting reads from??
+  my $inFh;
+  if(! -t STDIN){
+    $inFh=*STDIN;
+  } elsif(@ARGV==1){
+    if(is_gzipped($seqFile,$settings)){
+      open($inFh,"gunzip -c '$seqFile' |") or die "Could not open/gunzip shuffled fastq file $seqFile: $!";
+    } else {
+      open($inFh,"<",$seqFile) or die "Could not open shuffled fastq file $seqFile: $!";
+    }
+  } elsif(@ARGV > 1){
+    die "ERROR: I can only deshuffle one file at a time but more were given.";
+  } elsif(@ARGV < 1){
+    die "ERROR: I need stdin or a file to deshuffle.";
+  } else {
+    die "INTERNAL ERROR";
+  }
 
   # set up the output filehandles if the user wants gzipped output
   my $stdout = *STDOUT;
@@ -61,13 +79,8 @@ sub deshuffleSeqs{
     $stderr = new IO::Compress::Gzip '/dev/stderr';
   }
 
-  if(is_gzipped($seqFile,$settings)){
-    open(SHUFFLED,"gunzip -c '$seqFile' |") or die "Could not open/gunzip shuffled fastq file $seqFile: $!";
-  } else {
-    open(SHUFFLED,"<",$seqFile) or die "Could not open shuffled fastq file $seqFile: $!";
-  }
   my $i=0;
-  while(<SHUFFLED>){
+  while(<$inFh>){
     my $mod=$i%8;
     if($mod<4){
       print $stdout $_;
@@ -79,7 +92,7 @@ sub deshuffleSeqs{
     
     $i++;
   }
-  close SHUFFLED;
+  close $inFh;
   my $numReads=$i/4;
   return $numReads;
 }
