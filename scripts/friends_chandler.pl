@@ -31,10 +31,9 @@ exit main();
 
 sub main{
   my $settings={};
-  GetOptions($settings,qw(help sortby|sort-by=s kmerlength|kmer=i gt=i kmerCounter=s delta=i tempdir=s numcpus=i)) or die $!;
+  GetOptions($settings,qw(help sortby|sort-by=s kmerlength|kmer=i gt=i kmerCounter=s tempdir=s numcpus=i)) or die $!;
   $$settings{kmerlength} ||=21;
   $$settings{kmerCounter}||="";
-  $$settings{delta}      ||=100;
   $$settings{gt}         ||=1;
   $$settings{tempdir}    ||=mktempdir();
   $$settings{numcpus}    ||=1;
@@ -103,8 +102,6 @@ sub usage{
 
   Usage: $0 file.fastq[.gz]
   --kmer     21     kmer length
-  --delta    100    How different the counts have to be to
-                    detect a valley or peak
   --numcpus  1
 
   MISC
