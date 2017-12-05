@@ -50,24 +50,25 @@ sub is_gzipped{
 sub deshuffleSeqs{
   my($settings)=@_;
 
-  my ($seqFile,$shouldNotExist)=(@ARGV);
+  my ($seqFile)=(@ARGV);
+  if(@ARGV > 1){
+    die "ERROR: I can only deshuffle one file at a time but more were given.";
+  }
 
   # Where are we getting reads from??
   my $inFh;
-  if(! -t STDIN){
-    $inFh=*STDIN;
-  } elsif(defined($shouldNotExist)){
-    die "ERROR: I can only deshuffle one file at a time but more were given.";
-  } elsif(@ARGV==1){
+
+  # If there is a file, then open it.
+  if(@ARGV==1){
     if(is_gzipped($seqFile,$settings)){
       open($inFh,"gunzip -c '$seqFile' |") or die "Could not open/gunzip shuffled fastq file $seqFile: $!";
     } else {
       open($inFh,"<",$seqFile) or die "Could not open shuffled fastq file $seqFile: $!";
     }
-  } elsif(!defined($seqFile)){
-    die "ERROR: I need stdin or a file to deshuffle.";
-  } else {
-    die "INTERNAL ERROR";
+  } 
+  # assume stdin if no filename
+  else {
+    $inFh=*STDIN;
   }
 
   # set up the output filehandles if the user wants gzipped output
@@ -99,8 +100,13 @@ sub deshuffleSeqs{
 sub shuffleSeqs{
   my($seqFile,$settings)=@_;
   my $i=0;
-  my $fp = *STDOUT;
-     $fp=new IO::Compress::Gzip '-' if($$settings{gzip});
+  my $fp;
+  if($$settings{gzip}){
+    $fp=new IO::Compress::Gzip '-' if($$settings{gzip});
+  } else {
+    $fp = *STDOUT;
+  }
+
   for(my $j=0;$j<@$seqFile;$j+=2){
     my($file1,$file2)=($$seqFile[$j],$$seqFile[$j+1]);
     if(is_gzipped($file1,$settings)){
@@ -113,23 +119,15 @@ sub shuffleSeqs{
     } else {
       open(MATE2,"<",$file2) or die "Could not open $file2: $!";
     }
-    while(my $out=<MATE1>){
-      $out.=<MATE1> for(1..3);
-      my $out2=<MATE2>;
-      $out2.=<MATE2> for(1..3);
-
-      if(!$out2){
-        print STDERR "WARNING: there are more lines in $file1 than in $file2! I will not continue reading $file1\n";
-        last;
+    while(my $line=<MATE1>){
+      print $fp $line;
+      for(1..3){
+        print $fp scalar(<MATE1>);
       }
-
-      print $fp "$out$out2";
+      for(1..4){
+        print $fp scalar(<MATE2>);
+      }
       $i++;
-    }
-    # Check for a longer read2 file
-    my $more_mate2=<MATE2>;
-    if($more_mate2){
-      print STDERR "WARNING: there are more lines in $file2 than in $file1! I will not continue reading $file2\n";
     }
 
     close MATE1; close MATE2;
