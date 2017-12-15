@@ -71,6 +71,7 @@ sub convert{
 
 sub usage{
   "Converts a multi-line fastq file to the standard 4-lines per entry, standard form
+  Carol can straighten you out just like she did with Ross.
   Usage: $0 -i nonstandard.fastq -o standard.fastq [other options]
   -m minimum length for a sequence to be outputted, in base pairs
   ";

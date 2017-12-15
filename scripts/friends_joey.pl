@@ -142,7 +142,10 @@ sub usage{
   my $help="Shuffle or deshuffle sequences
   Usage:           $0 file_1.fastq file_2.fastq > shuffled.fastq
   Alternate Usage: $0 -d shuffled.fastq > file_1.fastq 2> file_2.fastq
-  NOTE: Due to the double redirection, error messages are hidden when deshuffling. A user should check the exit code to see if the program executed correctly.
+  NOTE: Due to the double redirection, error messages are hidden when 
+  deshuffling. A user should check the exit code to see if the program 
+  executed correctly.
+  Joey can be the glue between friends just like how you want to interleave reads
     -d for deshuffle
     -gz for gzipped output (including stderr)
     -h for additional help";

@@ -96,9 +96,8 @@ sub which{
 }
 
 sub usage{
-  "
-  $0: 
-    Print a tab-delimited count of kmers from a reads file
+  "$0: Print a tab-delimited count of kmers from a reads file
+  Just like Chander's mysterious analytics job, you too can use magic kmers
 
   Usage: $0 file.fastq[.gz]
   --kmer     21     kmer length
