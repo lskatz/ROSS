@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
 # friends_rachel.pl: puts out metrics for a raw reads file
+# Just like Rachel's job at a fashion company, her job is to make you look good!
 # Author: Lee Katz <lkatz@cdc.gov>
 #
 # TODO make a read score that makes sense.  The score will describe
@@ -35,10 +36,10 @@ local $SIG{'__DIE__'} = sub { my $e = $_[0]; $e =~ s/(at [^\s]+? line \d+\.$)/\n
 exit(main());
 
 sub main() {
-  die(usage($settings)) if @ARGV<1;
-
-  # TODO sampleFrequency option
-  my @cmd_options=qw(help fast qual_offset=i minLength=i numcpus=i expectedGenomeSize=s histogram|hist reads-per-qual tempdir=s);
+  my @cmd_options=qw(
+    help distribution=s sampleFrequency|frequency=f fast qual_offset=i minLength=i 
+    numcpus=i expectedGenomeSize=s histogram|hist reads-per-qual tempdir=s
+  );
   GetOptions($settings, @cmd_options) or die $!;
   die usage() if($$settings{help});
   die "ERROR: need reads file\n".usage() if(@ARGV<1);
@@ -47,8 +48,11 @@ sub main() {
   $$settings{tempdir}||=mktempdir();
   $$settings{bufferSize}||=100000;
   $$settings{minLength}||=1;
-  # the sample frequency is 100% by default or 1% if "fast"
-  $$settings{sampleFrequency} ||= ($$settings{fast})?0.01:1;
+  $$settings{distribution}||="normal";
+  $$settings{sampleFrequency} ||= 1;
+  if($$settings{fast}){
+    $$settings{sampleFrequency}=0.01;
+  }
 
   # get the right headers
   if($$settings{histogram}){
@@ -95,7 +99,7 @@ sub printReadMetricsFromFile{
   }
 
   # Combine the threads
-  my %count=(minReadLength=>1e999); # need a min length to avoid a bug later
+  my %count=(minReadLength=> ~0); # need a min length to avoid a bug later
   $Q->enqueue(undef) for(@thr);
   for(@thr){
     my $c=$_->join;
@@ -107,6 +111,7 @@ sub printReadMetricsFromFile{
     push(@{$count{tlen}},@{$$c{tlen}});
     push(@{$count{readLength}},@{$$c{readLength}});
     push(@{$count{readQual}},@{$$c{readQual}});
+    push(@{$count{avgQualPerRead}},@{$$c{avgQualPerRead}});
   }
 
   # extrapolate the counts to the total number of reads if --fast
@@ -115,36 +120,87 @@ sub printReadMetricsFromFile{
   $count{extrapolatedNumBases}=int($count{numBases}/$fractionReadsRead);
   $count{extrapolatedNumReads}=int($count{numReads}*$fractionReadsRead);
 
-  # derive some more values
-  my $avgQual=round($count{qualSum}/$count{numBases});
-  my $avgReadLength=round($count{numBases}/$count{extrapolatedNumReads});
-  my $isPE=`run_assembly_isFastqPE.pl $file`;
-  chomp($isPE);
-  my $medianFragLen='.';
-  if(grep(/$ext/,@samExt)){
-    # Bam files are PE if they have at least some fragment sizes.
-    # See if tlen is present so that it can be calculated.
-    $isPE=(@{$count{tlen}} > 0)?1:0;
-    if($isPE){
-      my $tlenStats=Statistics::Descriptive::Full->new;
-      $tlenStats->add_data(@{$count{tlen}});
-      my $tlen25=$tlenStats->percentile(25);
-      my $tlen50=$tlenStats->percentile(50);
-      my $tlen75=$tlenStats->percentile(75);
-      $medianFragLen="$tlen50\[$tlen25,$tlen75]";
-    }
-  }
-  # coverage is bases divided by the genome size
-  my $coverage=($$settings{expectedGenomeSize})?round($count{extrapolatedNumBases}/$$settings{expectedGenomeSize}):'.';
+  $count{isPE}=`friends_ung.pl $file`;
+  chomp($count{isPE});
 
-  if($$settings{histogram}){
-    printHistogram($count{readLength},$fractionReadsRead,$settings);
-  } elsif($$settings{'reads-per-qual'}){
-    printHistogram($count{readQual},$fractionReadsRead,$settings);
+  # Edit %count in-place with useful metrics.
+  if($$settings{distribution} eq "normal"){
+    parametricDistributionMetrics($file,\%count,$fractionReadsRead,$settings);
   } else {
-    print join("\t",$file,$avgReadLength,$count{extrapolatedNumBases},$count{minReadLength},$count{maxReadLength},$avgQual,$count{numReads},$isPE,$coverage,'.',$medianFragLen)."\n";
+    nonparametricDistributionMetrics($file,\%count,$fractionReadsRead,$settings);
   }
   return \%count;
+}
+
+sub parametricDistributionMetrics{
+  my($file,$count,$fractionReadsRead,$settings)=@_;
+
+  # derive some more values
+  my $avgQual=round($$count{qualSum}/$$count{numBases});
+  my $avgReadLength=round($$count{numBases}/$$count{extrapolatedNumReads});
+  my $medianFragLen='.';
+
+  # Bam files are PE if they have at least some fragment sizes.
+  # See if tlen is present so that it can be calculated.
+  if(@{$$count{tlen}} > 0){
+    my $tlenStats=Statistics::Descriptive::Full->new;
+    $tlenStats->add_data(@{$$count{tlen}});
+    my $tlen25=$tlenStats->percentile(25);
+    my $tlen50=$tlenStats->percentile(50);
+    my $tlen75=$tlenStats->percentile(75);
+    $medianFragLen="$tlen50\[$tlen25,$tlen75]";
+  }
+  # coverage is bases divided by the genome size
+  my $coverage=($$settings{expectedGenomeSize})?round($$count{extrapolatedNumBases}/$$settings{expectedGenomeSize}):'.';
+
+  if($$settings{histogram}){
+    printHistogram($$count{readLength},$fractionReadsRead,$settings);
+  } elsif($$settings{'reads-per-qual'}){
+    printHistogram($$count{readQual},$fractionReadsRead,$settings);
+  } else {
+    print join("\t",$file,$avgReadLength,$$count{extrapolatedNumBases},$$count{minReadLength},$$count{maxReadLength},$avgQual,$$count{numReads},$$count{isPE},$coverage,'.',$medianFragLen)."\n";
+  }
+
+  return $count;
+}
+
+sub nonparametricDistributionMetrics{
+  my($file,$count,$fractionReadsRead,$settings)=@_;
+
+  my $readLengthStats=Statistics::Descriptive::Full->new;
+  $readLengthStats->add_data(@{$$count{readLength}});
+
+  # Need to find avg qual per read to get a good metric
+  my $qualStats=Statistics::Descriptive::Full->new;
+  $qualStats->add_data(@{$$count{avgQualPerRead}});
+
+  # derive some more values
+  my $medianQual = sprintf("%0.1f[%0.0f,%0.0f]", scalar $qualStats->median, scalar $qualStats->percentile(25), scalar $qualStats->percentile(75));
+  my $medianReadLength=sprintf("%0.1f[%0.0f,%0.0f]",scalar $readLengthStats->median, scalar $readLengthStats->percentile(25), scalar $readLengthStats->percentile(75));
+  my $medianFragLen='.';
+
+  # Bam files are PE if they have at least some fragment sizes.
+  # See if tlen is present so that it can be calculated.
+  if(@{$$count{tlen}} > 0){
+    my $tlenStats=Statistics::Descriptive::Full->new;
+    $tlenStats->add_data(@{$$count{tlen}});
+    my $tlen25=$tlenStats->percentile(25);
+    my $tlen50=$tlenStats->percentile(50);
+    my $tlen75=$tlenStats->percentile(75);
+    $medianFragLen="$tlen50\[$tlen25,$tlen75]";
+  }
+  # coverage is bases divided by the genome size
+  my $coverage=($$settings{expectedGenomeSize})?round($$count{extrapolatedNumBases}/$$settings{expectedGenomeSize}):'.';
+
+  if($$settings{histogram}){
+    printHistogram($$count{readLength},$fractionReadsRead,$settings);
+  } elsif($$settings{'reads-per-qual'}){
+    printHistogram($$count{readQual},$fractionReadsRead,$settings);
+  } else {
+    print join("\t",$file,$medianReadLength,$$count{extrapolatedNumBases},$$count{minReadLength},$$count{maxReadLength},$medianQual,$$count{numReads},$$count{isPE},$coverage,'.',$medianFragLen)."\n";
+  }
+
+  return $count;
 }
 
 sub printHistogram{
@@ -174,6 +230,7 @@ sub readMetrics{
   my $maxReadLength=0;
   my @length;
   my @readQual;
+  my @avgQualPerRead;
   my @tlen; # fragment length
   while(defined(my $tmp=$Q->dequeue)){
     my($seq,$qual,$tlen)=@$tmp;
@@ -201,15 +258,17 @@ sub readMetrics{
     } else {         # otherwise, encoded quality
       @qual=map(ord($_)-$qual_offset, split(//,$qual));
     }
-    $count{qualSum}+=sum(@qual);
-    #push(@readQual, sum(@qual)/scalar(@qual));
-    push(@readQual, sum(@qual));
+    my $qualSum=sum(@qual);
+    $count{qualSum}+=$qualSum;
+    push(@avgQualPerRead, $qualSum/$readLength);
+    push(@readQual, $qualSum);
   }
   $count{minReadLength}=$minReadLength;
   $count{maxReadLength}=$maxReadLength;
   $count{readLength}=\@length;
   $count{tlen}=\@tlen;
   $count{readQual}=\@readQual;
+  $count{avgQualPerRead}=\@avgQualPerRead;
   return \%count;
 }
 
@@ -383,16 +442,21 @@ sub round{
 sub usage{
   my ($settings)=@_;
   "Prints useful read statistics on one or more read sets
+  Just like Rachel's job at a fashion company, her job is to make you look good!
   Usage: $0 *.fastq.gz
          $0 reads.fastq.gz | column -t
     A reads file can be fasta, sff, fastq, or fastq.gz
     The quality file for a fasta file reads.fasta is assumed to be reads.fasta.qual
   
-  --fast            fast mode: samples 1% of the reads and extrapolates
+  --frequency   1   Subsample a percentage of the reads (default: 1 which is 100%)
+  --fast            fast mode: Shortcut for --frequency 0.01.
+                    Overrides any value set for --frequency.
   --numcpus     1   Number of cpus
   --qual_offset 33  Set the quality score offset
   --minLength   1   Set the minimum read length used for calculations
-  -e        4000000 expected genome size, in bp
+  -e                expected genome size, in bp. If not supplied, 
+                    will not be used in calculations.
+  --distribution    Default: normal.  Other options: nonnormal
   
   HISTOGRAM
   --hist            Generate a histogram of the reads per length
