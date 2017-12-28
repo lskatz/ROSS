@@ -1,0 +1,6 @@
+[package]
+name = "ROSS"
+version = "0.1.0"
+authors = ["Lee Katz - Aspen <gzu2@cdc.gov>"]
+
+[dependencies]
