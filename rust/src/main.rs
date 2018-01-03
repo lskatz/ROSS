@@ -3,13 +3,15 @@ use std::io::Read;
 use regex::Regex;
 
 fn main() {
-    let stdin = std::io::stdin(); //io::stdin();
+    let stdin = std::io::stdin();
     let whitespace_regex = Regex::new(r"\s").unwrap();
-    //let qual_offset=33;
 
     'entry: loop{
-        let mut buf :String="".to_string();
-        let mut id  :String="".to_string();
+        let mut id   = String::new();
+        let mut seq  = String::new();
+        let mut qual = String::new();
+
+        let mut buf  = String::new();
 
         // Read the ID of the entry
         match stdin.read_line(&mut buf) {
@@ -17,36 +19,37 @@ fn main() {
                 if n < 1 {
                     break;
                 }
-                //println!("{} bytes read",n);
-                id = buf.clone();
-                println!("{}", id.trim());
+                id = String::from(buf);
+                id = String::from(id.trim());
+                //println!("{}", id.trim());
             }
             Err(error) => {
                 println!("ERROR: {}",error);
             }
         }
 
+        // reset the buffer
+        let mut buf = String::new();
+
         // Read the DNA line of the entry and count
         // how long it is.
-        let mut dna :String="".to_string();
         'dna: loop{
             buf="".to_string();
             match stdin.read_line(&mut buf) {
                 Ok(n) => {
-                    //println!("==> {}",buf.chars().nth(0).unwrap());
                     if n < 1 {
                         println!("ERROR: incomplete entry, seqid {}\n{}", id.trim(),buf);
                         break 'entry;
                     }
                     // if we hit the qual line, then it is a single
-                    // character, +.
+                    // character, +
                     else if buf.chars().nth(0).unwrap() == '+' {
-                        println!("{}",dna.trim());
-                        println!("+");
+                        seq = String::from(seq.trim());
                         break 'dna;
                     }
                     else {
-                        dna = format!("{}{}",dna.trim(),buf.trim());
+                        //seq = seq + &buf;
+                        seq.push_str(&buf);
                     }
                 }
                 Err(error) => {
@@ -54,11 +57,11 @@ fn main() {
                 }
             }
         }
-        let read_length :usize=dna.len();
+        let read_length :usize=seq.len();
         //println!("{}", read_length);
+        //println!("=>{}<=", seq);
 
         // Let's get the qual string next
-        let mut qual :String = "".to_string();
         // https://stackoverflow.com/a/30679861
         for _i in 0..read_length {
             let byte :Option<i32> = std::io::stdin()
@@ -85,8 +88,10 @@ fn main() {
                 qual_encoding = qual_u8 as char;
             }
 
-            qual = format!("{}{}",qual,qual_encoding);
+            qual.push(qual_encoding);
+            //qual = format!("{}{}",qual,qual_encoding);
         }
+
         // the next char in the file should be \n, so it
         // needs to be burned.
         let byte :Option<i32> = std::io::stdin()
@@ -102,9 +107,9 @@ fn main() {
             println!("ERROR: newline not found where expected at the end of qual line");
         }
 
-        println!("{}",qual);
+        println!("{}\n{}\n+\n{}",id,seq,qual);
+        break;
 
     }
-
 }
 
