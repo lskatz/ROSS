@@ -1,8 +1,43 @@
 extern crate regex;
+extern crate getopts;
 use std::io::Read;
 use regex::Regex;
 
-fn main() {
+use std::env;
+use getopts::Options;
+
+fn main(){
+    
+    parse_args();
+
+    reformat_stdin();
+
+}
+
+fn parse_args () -> Vec<String> {
+
+    let args: Vec<String> = env::args().collect();
+    let program = args[0].clone();
+    let mut opts = Options::new();
+    opts.optflag("h", "help", "Print this help menu.");
+    let matches = match opts.parse(&args[1..]) {
+      Ok(m) => { m }
+      Err(error) => { panic!(error.to_string()) }
+    };
+    if matches.opt_present("h") { 
+      print_usage(&program,opts);
+      std::process::exit(1);
+    }
+    
+    args
+}
+
+fn print_usage(program: &str, opts: Options) {
+  let brief = format!("Usage: {} FILE [options]", program);
+  print!("{}", opts.usage(&brief));
+}
+
+fn reformat_stdin() {
     
     let re = Regex::new(r"(\s+)").expect("malformed regex");
     let stdin = std::io::stdin();
@@ -58,7 +93,9 @@ fn main() {
         // https://stackoverflow.com/a/30679861
         let mut qual_length_counter=0;
         for byte in std::io::stdin().bytes(){
-          let qual_char = byte.expect("Reached the end of the file too early") as char;
+          let qual_char = byte
+                          .expect("Reached the end of the file too early while reading qual bytes")
+                          as char;
           if qual_char == '\n' {
             if qual_length_counter == read_length {
               break;
