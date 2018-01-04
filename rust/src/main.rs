@@ -1,41 +1,44 @@
+extern crate regex;
 use std::io::Read;
+use regex::Regex;
 
 fn main() {
+    
+    let re = Regex::new(r"(\s+)").expect("malformed regex");
     let stdin = std::io::stdin();
 
     'entry: loop{
-        let mut id   = String::new();
-        let mut seq  = String::new();
-        let mut qual = String::new();
-
-        let mut buf  = String::new();
+        let mut id  :String = String::new();
+        let mut seq :String = String::new();
+        let mut qual:String = String::new();
 
         // Read the ID of the entry
-        match stdin.read_line(&mut buf) {
+        match stdin.read_line(&mut id) {
             Ok(n) => {
+                // if we're expecting an ID line, but
+                // there are zero bytes read, then we are
+                // at the end of the file. Break.
                 if n < 1 {
-                    break;
+                    break 'entry;
                 }
-                id = String::from(buf);
             }
             Err(error) => {
-                println!("ERROR: {}",error);
+                panic!("ERROR: {}",error);
             }
         }
 
         // Read the DNA line of the entry and count
         // how long it is.
         'dna: loop{
-            buf="".to_string();
+            let mut buf = String::new();
             match stdin.read_line(&mut buf) {
                 Ok(n) => {
                     if n < 1 {
-                        println!("ERROR: incomplete entry, seqid {}\n{}", id.trim(),buf);
-                        break 'entry;
+                        panic!("ERROR: incomplete entry (no seq line), seqid {}\nbuf {}", id.trim(),buf);
                     }
                     // if we hit the qual line, then it is a single
                     // character, +
-                    else if buf.chars().nth(0).unwrap() == '+' {
+                    else if &buf[0..1] == "+" {
                         break 'dna;
                     }
                     else {
@@ -43,17 +46,19 @@ fn main() {
                     }
                 }
                 Err(error) => {
-                    println!("ERROR: {}",error);
+                    panic!("ERROR while reading seq for ID {}: {}",id.trim(),error);
                 }
             }
         }
-        let read_length :usize=seq.len() - 1;
+        // remove all whitespace
+        seq = re.replace_all(&seq,"").into_owned();
+        let read_length :usize=seq.len(); 
 
         // Let's get the qual string next
         // https://stackoverflow.com/a/30679861
         let mut qual_length_counter=0;
         for byte in std::io::stdin().bytes(){
-          let qual_char = byte.unwrap() as char;
+          let qual_char = byte.expect("Reached the end of the file too early") as char;
           if qual_char == '\n' {
             if qual_length_counter == read_length {
               break;
