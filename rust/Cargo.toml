@@ -1,5 +1,5 @@
 [package]
-name = "rust"
+name = "ross"
 version = "0.1.0"
 authors = ["Lee Katz <gzu2@cdc.gov>"]
 
@@ -7,4 +7,3 @@ authors = ["Lee Katz <gzu2@cdc.gov>"]
 bio = "0.15"
 regex = "0.2"
 getopts = "0.2"
-
