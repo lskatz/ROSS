@@ -1,9 +1,10 @@
 [package]
 name = "rust"
 version = "0.1.0"
-authors = ["Lee Katz - Aspen <gzu2@cdc.gov>"]
+authors = ["Lee Katz <gzu2@cdc.gov>"]
 
 [dependencies]
 bio = "0.15"
 regex = "0.2"
+getopts = "0.2"
 
