@@ -1,26 +1,19 @@
 extern crate ross;
 use std::fs::File;
-use std::io::BufRead;
 use std::io::BufReader;
+use std::io::prelude::*;
 
 fn main(){
     
-    ross::parse_args();
+    //ross::parse_args();
 
-    //let stdin = std::io::stdin();
-    let stdin = File::open("/dev/stdin").expect("Could not open /dev/stdin");
-    let reader = BufReader::new(&stdin);
-    let fastq_iter = ross::ReadFastqCarefully::new(&reader);
-
-    for seq in fastq_iter {
-      //println!("{}\n{}\n{}",seq.id.trim(),seq.seq,seq.qual.trim());
-      println!("{}\n",seq.id.trim());
+    //let fastq_iter = ross::ReadFastqCarefully::new("/dev/stdin");
+    let my_file = File::open("/dev/stdin").expect("Could not open file");
+    let mut my_buffer=BufReader::new(my_file);
+    let mut fastq_reader=ross::Reader::new(my_buffer);
+    while let Some(seq_obj) = fastq_reader.read() {
+      println!("{}",seq_obj.qual);
     }
-
-    /*
-    let reads :Vec<ross::Seq> = ross::read_fastq_carefully();
-
-    println!(">{}<",reads[0].id);
-    */
+    println!("Made it");
 }
 
