@@ -12,7 +12,7 @@ fn main(){
     let mut my_buffer=BufReader::new(my_file);
     let mut fastq_reader=ross::Reader::new(my_buffer);
     while let Some(seq_obj) = fastq_reader.read() {
-      println!("{}",seq_obj.qual);
+      println!("{}\n{}\n+\n{}",seq_obj.id.trim(),seq_obj.seq,seq_obj.qual);
     }
     println!("Made it");
 }
