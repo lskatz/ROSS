@@ -24,7 +24,37 @@ impl<R: io::Read> Reader<R>{
     }
   }
 
+  /// An alias for self.read_quickly().
   pub fn read(&mut self) -> Option<Seq> {
+    return self.read_quickly();
+  }
+
+  /// Read a fastq entry but assume that there are only
+  /// four lines per entry (id, seq, plus, qual).
+  pub fn read_quickly(&mut self) -> Option<Seq> {
+    let mut seq = Seq {
+      id:    String::new(),
+      seq:   String::new(),
+      qual:  String::new(),
+    };
+
+    // Read the ID of the entry
+    self.reader.read_line(&mut seq.id).expect("ERROR: could not read ID line");
+
+    self.reader.read_line(&mut seq.seq).expect("ERROR: could not read sequence line");
+    
+    // burn the plus sign
+    let mut _plus = String::new();
+    self.reader.read_line(&mut _plus).expect("ERROR: plus sign line not found");
+
+    self.reader.read_line(&mut seq.qual).expect("ERROR: could not read qual line");
+
+    Some(seq)
+  }
+
+  /// Read a fastq entry in the most correct way possible,
+  /// allowing for whitespace in seq and qual lines.
+  pub fn read_carefully(&mut self) -> Option<Seq> {
     let whitespace_regex = Regex::new(r"(\s+)").expect("malformed regex");
 
     let mut seq = Seq {
