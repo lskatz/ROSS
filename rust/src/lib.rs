@@ -1,5 +1,6 @@
 extern crate regex;
 extern crate statistical;
+extern crate getopts;
 
 use std::env;
 use getopts::Options;
@@ -15,7 +16,7 @@ pub fn parse_args() -> Vec<String> {
         Err(error) => { panic!(error.to_string()) }
     };
     if matches.opt_present("h") {
-        print_usage(&program,opts);
+        print_usage(opts);
         std::process::exit(1);
     }
 
