@@ -1,14 +1,9 @@
 use std::io;
 use std::io::prelude::*;
+use io::seq::Seq;
+use io::seq::Cleanable;
 
 use regex::Regex;
-
-/// A sequence struct that contains the ID, sequence, and quality cigar line
-pub struct Seq {
-  pub id:    String,
-  pub seq:   String,
-  pub qual: String,
-}
 
 /// A FastQ reader
 pub struct Reader<R: io::Read> {

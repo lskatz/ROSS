@@ -1,12 +1,14 @@
 /// A sequence struct that contains the ID, sequence, and quality cigar line
 pub struct Seq {
-  pub id:    String,
-  pub seq:   String,
+  pub id:   String,
+  pub seq:  String,
   pub qual: String,
 }
 
 /// A sequence that can be cleaned
-trait Cleanable{
+pub trait Cleanable{
+    /// new sequence object
+    fn new (id: String, seq: String, qual: String) -> Seq;
     /// lower any low quality base to a zero and "N"
     fn lower_ambiguity_q(&mut self) -> ();
     /// Trim sequences based on quality
@@ -21,6 +23,19 @@ trait Cleanable{
 
 
 impl Cleanable for Seq {
+    /// Make a new cleanable sequence object
+    fn new (id: String, seq: String, qual: String) -> Seq{
+        let mut id_copy = id.clone();
+        if id_copy.chars().nth(0).expect("ID was empty") == '@' {
+            id_copy.pop();
+        }
+        return Seq{
+            id:   id_copy,
+            seq:  seq.clone(),
+            qual: qual.clone(),
+        };
+    }
+
     /// Alter any ambiguity site with a quality=0
     fn lower_ambiguity_q(&mut self){
         let zero_score:char  = 33 as char;
@@ -53,7 +68,6 @@ impl Cleanable for Seq {
 
     /// Trim the ends of reads with low quality
     fn trim(&mut self) {
-        self.lower_ambiguity_q();
         let min_qual = 20;
 
         let mut trim5=0;
@@ -88,12 +102,14 @@ impl Cleanable for Seq {
 
     fn to_string(&self) -> String {
         let mut entry = String::new();
-        entry.push('@');
-        entry.push_str(&self.id);
+        if self.id.chars().nth(0).expect("Seq ID was not set") != '@' {
+            entry.push('@');
+        }
+        entry.push_str(self.id.trim());
         entry.push_str("\n");
-        entry.push_str(&self.seq);
+        entry.push_str(self.seq.trim());
         entry.push_str("\n+\n");
-        entry.push_str(&self.qual);
+        entry.push_str(&self.qual.trim());
         return entry;
     }
     fn print(&self) -> () {
