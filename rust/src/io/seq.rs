@@ -8,7 +8,9 @@ pub struct Seq {
 /// A sequence that can be cleaned
 pub trait Cleanable{
     /// new sequence object
-    fn new (id: String, seq: String, qual: String) -> Seq;
+    fn new (id: &String, seq: &String, qual: &String) -> Seq;
+    /// sanitize an identifier string
+    fn sanitize_id(id: &String) -> (String);
     /// lower any low quality base to a zero and "N"
     fn lower_ambiguity_q(&mut self) -> ();
     /// Trim sequences based on quality
@@ -21,20 +23,26 @@ pub trait Cleanable{
     fn print(&self)     -> ();
 }
 
-
 impl Cleanable for Seq {
     /// Make a new cleanable sequence object
-    fn new (id: String, seq: String, qual: String) -> Seq{
-        let mut id_copy = id.clone();
-        if id_copy.chars().nth(0).expect("ID was empty") == '@' {
-            id_copy.pop();
-        }
+    fn new (id: &String, seq: &String, qual: &String) -> Seq{
+        let id_copy = Self::sanitize_id(&id);
         return Seq{
             id:   id_copy,
             seq:  seq.clone(),
             qual: qual.clone(),
         };
     }
+    /// Read an identifier and return a cleaned version,
+    /// e.g., removing @ in a fastq identifier.
+    fn sanitize_id(id: &String) -> (String) {
+        let mut id_copy = id.clone();
+        if id_copy.chars().nth(0).expect("ID was empty") == '@' {
+            id_copy.pop();
+        }
+        return id_copy;
+    }
+        
 
     /// Alter any ambiguity site with a quality=0
     fn lower_ambiguity_q(&mut self){
@@ -97,6 +105,22 @@ impl Cleanable for Seq {
 
     /// Reports bool whether the read passes thresholds.
     fn is_high_quality(&mut self) -> bool {
+        // fail if seq len is short
+        if self.seq.len() < 62 {
+            return false;
+        }
+
+        let mut total_qual = 0;
+        for qual in self.qual.chars() {
+            total_qual += qual as u32;
+        }
+
+        // fail if qual is low
+        let avg_qual = (total_qual as f32/self.seq.len() as f32) - 33.0;
+        if avg_qual < 20.0 {
+            return false;
+        }
+
         return true;
     }
 

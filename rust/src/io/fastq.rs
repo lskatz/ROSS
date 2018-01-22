@@ -25,22 +25,22 @@ impl<R: io::Read> Reader<R>{
   /// Read a fastq entry but assume that there are only
   /// four lines per entry (id, seq, plus, qual).
   pub fn read_quickly(&mut self) -> Option<Seq> {
-    let mut seq = Seq {
-      id:    String::new(),
-      seq:   String::new(),
-      qual:  String::new(),
-    };
+    let mut id=    String::new();
+    let mut seq=   String::new();
+    let mut qual=  String::new();
 
     // Read the ID of the entry
-    self.reader.read_line(&mut seq.id).expect("ERROR: could not read ID line");
+    self.reader.read_line(&mut id).expect("ERROR: could not read ID line");
 
-    self.reader.read_line(&mut seq.seq).expect("ERROR: could not read sequence line");
+    self.reader.read_line(&mut seq).expect("ERROR: could not read sequence line");
     
     // burn the plus sign
     let mut _plus = String::new();
     self.reader.read_line(&mut _plus).expect("ERROR: plus sign line not found");
 
-    self.reader.read_line(&mut seq.qual).expect("ERROR: could not read qual line");
+    self.reader.read_line(&mut qual).expect("ERROR: could not read qual line");
+
+    let seq = Seq::new(&id, &seq, &qual);
 
     Some(seq)
   }
@@ -50,14 +50,12 @@ impl<R: io::Read> Reader<R>{
   pub fn read_carefully(&mut self) -> Option<Seq> {
     let whitespace_regex = Regex::new(r"(\s+)").expect("malformed regex");
 
-    let mut seq = Seq {
-      id:    String::new(),
-      seq:   String::new(),
-      qual:  String::new(),
-    };
+    let mut id=    String::new();
+    let mut seq=   String::new();
+    let mut qual=  String::new();
 
     // Read the ID of the entry
-    match self.reader.read_line(&mut seq.id) {
+    match self.reader.read_line(&mut id) {
         Ok(n) => {
             // if we're expecting an ID line, but
             // there are zero bytes read, then we are
@@ -78,7 +76,7 @@ impl<R: io::Read> Reader<R>{
         match self.reader.read_line(&mut buf) {
             Ok(n) => {
                 if n < 1 {
-                    panic!("ERROR: incomplete entry (no seq line), seqid {}\nbuf {}", seq.id.trim(),buf);
+                    panic!("ERROR: incomplete entry (no seq line), seqid {}\nbuf {}", id.trim(),buf);
                 }
                 // if we hit the qual line, then it is a single
                 // character, +
@@ -86,17 +84,17 @@ impl<R: io::Read> Reader<R>{
                     break 'dna;
                 }
                 else {
-                    seq.seq.push_str(&buf);
+                    seq.push_str(&buf);
                 }
             }
             Err(error) => {
-                panic!("ERROR while reading seq for ID {}: {}",seq.id.trim(),error);
+                panic!("ERROR while reading seq for ID {}: {}",id.trim(),error);
             }
         }
     }
     // remove all whitespace
-    seq.seq = whitespace_regex.replace_all(&seq.seq,"").into_owned();
-    let read_length :usize=seq.seq.len(); 
+    seq = whitespace_regex.replace_all(&seq,"").into_owned();
+    let read_length :usize=seq.len(); 
     
     // build onto the qual line until it has the right
     // number of bytes.
@@ -105,13 +103,13 @@ impl<R: io::Read> Reader<R>{
         match self.reader.read_line(&mut buf) {
             Ok(n) => {
                 if n < 1 {
-                    panic!("ERROR: incomplete entry (no qual line), seqid {}\nbuf {}", seq.id.trim(),buf);
+                    panic!("ERROR: incomplete entry (no qual line), seqid {}\nbuf {}", id.trim(),buf);
                 }
                 else {
-                  seq.qual.push_str(&buf);
+                  qual.push_str(&buf);
                 }
-                seq.qual = whitespace_regex.replace_all(&seq.qual,"").into_owned();
-                if seq.qual.len() >= read_length {
+                qual = whitespace_regex.replace_all(&qual,"").into_owned();
+                if qual.len() >= read_length {
                   break 'qual;
                 }
             }
@@ -121,6 +119,7 @@ impl<R: io::Read> Reader<R>{
         }
     }
 
+    let seq = Seq::new(&id, &seq, &qual);
     Some(seq)
   }
 }
