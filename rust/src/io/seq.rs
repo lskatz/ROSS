@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 /// A sequence struct that contains the ID, sequence, and quality cigar line
 pub struct Seq {
   pub id:   String,
   pub seq:  String,
   pub qual: String,
+  pub thresholds: HashMap<String,f32>,
 }
 
 /// A sequence that can be cleaned
@@ -27,10 +30,16 @@ impl Cleanable for Seq {
     /// Make a new cleanable sequence object
     fn new (id: &String, seq: &String, qual: &String) -> Seq{
         let id_copy = Self::sanitize_id(&id);
+        let mut thresholds = HashMap::new();
+        thresholds.insert("min_avg_qual".to_string(),20.0);
+        thresholds.insert("min_length".to_string(),100.0);
+        thresholds.insert("min_trim_qual".to_string(),20.0);
+
         return Seq{
             id:   id_copy,
             seq:  seq.clone(),
             qual: qual.clone(),
+            thresholds: thresholds,
         };
     }
     /// Read an identifier and return a cleaned version,
@@ -106,7 +115,10 @@ impl Cleanable for Seq {
     /// Reports bool whether the read passes thresholds.
     fn is_high_quality(&mut self) -> bool {
         // fail if seq len is short
-        if self.seq.len() < 62 {
+        let min_length = self.thresholds.get(&"min_length".to_string()).expect("min_length does not look like a number");
+        let seq_len = self.seq.len() as f32;
+        if seq_len < *min_length {
+            //.parse::<i32>().unwrap();
             return false;
         }
 
@@ -116,8 +128,9 @@ impl Cleanable for Seq {
         }
 
         // fail if qual is low
-        let avg_qual = (total_qual as f32/self.seq.len() as f32) - 33.0;
-        if avg_qual < 20.0 {
+        let avg_qual = (total_qual as f32/seq_len) - 33.0;
+        let min_qual = self.thresholds.get(&"min_avg_qual".to_string()).expect("min_avg_qual does not look like a number");
+        if avg_qual < *min_qual {
             return false;
         }
 
