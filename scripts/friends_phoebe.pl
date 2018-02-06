@@ -83,16 +83,31 @@ sub generateRandomReads{
   my $readStr="";
   my $basesCount=0;
   for(my $i=0;$i<$$settings{numreads};$i++){
-    my $seq ="";
-    my $qual="";
+    my $seq  ="";
+    my $qual ="";
+    my $seq2 ="";
+    my $qual2="";
     for(my $j=0;$j<$readlength;$j++){
-      $seq .=$nt[ floor(rand(4)) ];
-      $qual.=$qual[ floor(rand($numQual)) ];
+      $seq  .=$nt[ floor(rand(4)) ];
+      $qual .=$qual[ floor(rand($numQual)) ];
+      $seq2 .=$nt[ floor(rand(4)) ];
+      $qual2.=$qual[ floor(rand($numQual)) ];
+    }
+    my $id =$i;
+    my $id2=$i;
+    if($$settings{pe}){
+      $id ="$i/1";
+      $id2="$i/2";
     }
 
-    $readStr.='@read'.$i."\n".$seq."\n"."+\n".$qual."\n";
-
+    $readStr.='@read'.$id."\n".$seq."\n"."+\n".$qual."\n";
     $basesCount+=length($seq);
+
+    if($$settings{pe}){
+      $readStr.='@read'.$id2."\n".$seq2."\n"."+\n".$qual2."\n";
+    $basesCount+=length($seq2);
+    }
+
     last if($basesCount > $$settings{numbases});
   }
 
