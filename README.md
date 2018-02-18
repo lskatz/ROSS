@@ -26,3 +26,6 @@ All scripts accept the parameters
 |`friends_joey.pl`    | Shuffles or deshuffles paired end reads| ![Joey](/images/joey.png) |
 |`friends_barry.pl`   | Joins overlapping paired ends together | ![Barry](/images/barry.png) |
 
+## see also
+
+ROSS.rs, a Rust implementation of ROSS https://github.com/lskatz/ROSS.rs
