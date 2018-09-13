@@ -25,6 +25,7 @@ All scripts accept the parameters
 |`friends_ursula.pl`  | Removes duplicate reads and/or downsamples reads| ![Ursula](/images/ursula.png) | 
 |`friends_joey.pl`    | Shuffles or deshuffles paired end reads| ![Joey](/images/joey.png) |
 |`friends_barry.pl`   | Joins overlapping paired ends together | ![Barry](/images/barry.png) |
+|`friends_charles.pl` | Introduces Ns into a read set to help simulate increasing ambiguities | ![Charles](/images/charles.png) |
 
 ## see also
 
