@@ -88,7 +88,7 @@ sub introduceNs{
     my $plus=<>;
     my $qual=<>;
 
-    chomp($seq);
+    chomp($seq,$qual);
 
     # How many Ns will be added?
     my $numNs = $ncountPerReadFrequencies->lookup(int(rand($maxNsInt)+1));
@@ -114,12 +114,13 @@ sub introduceNs{
       }
 
       substr($seq, $pos, 1) = "N";
+      substr($qual,$pos, 1) = chr(33);
       $nsThusFar++;
 
       last if($nsThusFar >= $totalNs);
     }
 
-    print "$id$seq\n$plus$qual";
+    print "$id$seq\n$plus$qual\n";
 
     # If we have finished with the total number of Ns,
     # then just copy the rest of the input file.
@@ -129,6 +130,7 @@ sub introduceNs{
       }
     }
   }
+  close STDIN;
 
   return $nsThusFar;
 }
