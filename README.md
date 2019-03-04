@@ -26,6 +26,7 @@ All scripts accept the parameters
 |`friends_joey.pl`    | Shuffles or deshuffles paired end reads| ![Joey](/images/joey.png) |
 |`friends_barry.pl`   | Joins overlapping paired ends together | ![Barry](/images/barry.png) |
 |`friends_charles.pl` | Introduces Ns into a read set to help simulate increasing ambiguities | ![Charles](/images/charles.png) |
+|`friends_roger.pl`   | Finds invalid characters in a fastq file and fixes them | ![Roger](/images/roger.png) |
 
 ## see also
 
