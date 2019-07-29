@@ -26,6 +26,8 @@ our @EXPORT_OK = qw(
              @fastqExt @fastaExt @bamExt @vcfExt @richseqExt @sffExt @samExt
            );
 
+
+our $VERSION=0.2;
 our @fastqExt=qw(.fastq.gz .fastq .fq .fq.gz);
 our @fastaExt=qw(.fasta .fna .faa .mfa .fas .fa);
 our @bamExt=qw(.sorted.bam .bam);
