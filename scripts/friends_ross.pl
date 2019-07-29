@@ -15,8 +15,11 @@ sub logmsg{local $0=basename($0); print STDERR "$0: @_\n";}
 exit(main());
 sub main{
   my $settings={};
-  GetOptions($settings,qw(help verbose pe|paired-end|pairedend min-quality|min-qual=i min-length=i));
+  GetOptions($settings,qw(help pe-defline-match=s verbose pe|paired-end|pairedend min-quality|min-qual=i min-length=i));
   $$settings{pe}//=0;
+  if($$settings{'pe-defline-match'}){
+    $$settings{pe}=1;
+  }
   $$settings{'min-quality'}//=0;
   $$settings{'min-length'}//=0;
   die usage() if($$settings{help});
@@ -37,9 +40,15 @@ sub main{
 sub validate{
   my($settings)=@_;
 
+  my $regex;
+
   my $linesPerEntry=4;
   if($$settings{pe}){
     $linesPerEntry=8;
+    my $regexStr=$$settings{'pe-defline-match'};
+    if($regexStr){
+      $regex=qr/($regexStr)/;
+    }
   }
 
   # Check if any of the detailed/slow options are checked
@@ -56,6 +65,7 @@ sub validate{
   my $i=0;
   my $readLength=0;
   my $qualLine="";
+  my $strToMatch="";
   while(<>){
     $i++;
     my $mod=$i%4;
@@ -64,6 +74,24 @@ sub validate{
     if($mod==1){
       if(substr($_,0,1) ne '@'){
         return errorMsg($i,$_,$settings);
+      }
+
+      if($regex){ # regex is only defined if $pe && $pe-defline-match
+        if($strToMatch){
+          # Check against R1
+          $_=~/$regex/;
+          if($strToMatch ne $1){
+            return "The pattern did not match between R1 and R2:\nR1: $strToMatch\nR2: $1\n". errorMsg($i,$_,$settings);
+          }
+          # reset
+          $strToMatch="";
+        } else {
+          $_=~/$regex/;
+          $strToMatch=$1;
+          if(!$strToMatch){
+            return "Could not find the pattern from --pe-defline-match=".$$settings{'pe-defline-match'}."\n". errorMsg($i,$_,$settings);
+          }
+        }
       }
     } 
     # seq line
@@ -148,9 +176,14 @@ sub usage{
   The fastq file must be in a 4-line-per-read format.
 
   Usage: $0 < reads.fastq
-  --help        for help
-  --verbose     verbose
-  --pe          Check for interleaved paired end
+  --help              for help
+  --verbose           verbose
+  --pe                Check for interleaved paired end
+  --pe-defline-match  Match R1 and R2 headers with a 
+                      regular expression.
+                      Suggestion: --pe-defline-match '^@\\S+'
+                      If this option is supplied, then --pe 
+                      is turned on too.
 
   Options that might slow it down
   --min-length  1
@@ -159,5 +192,7 @@ sub usage{
   Examples:
     zcat reads.fastq.gz | $0
     $0 < reads.fastq
+  Validate many at once with xargs:
+    ls *.fastq.gz | xargs -P 8 -n 1 bash -c 'zcat $0 | validateFastq.pl || echo \"ERROR with $0\";'
     "
 }
