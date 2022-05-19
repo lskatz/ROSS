@@ -2,6 +2,12 @@
 
 Perform random operations on reads files.  Right now ROSS only supports fastq and fastq.gz format.
 
+## Deprecation
+
+🛑 ROSS has been deprecated for some time now due to the newer repo ROSS.
+These executables are about 10-20x faster than ROSS and install very easily using `cargo`.
+https://github.com/lskatz/fasten
+
 ## General usage
 
 All scripts accept the parameters
